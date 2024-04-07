@@ -1,0 +1,19 @@
+#!/bin/bash
+
+if [ -z "$1" ]; then
+	echo "USAGE: $0 <HOST> <CMD> [ARGS ...]"
+	exit 1
+fi
+
+HOST=$1
+shift
+
+HOST_PID=$(pgrep -f "bash.* mininet:$HOST$")
+
+if ! echo "$HOST_PID" | egrep -q "^[0-9]+$"; then
+	echo "Invalid host PID: $HOST_PID"
+	echo "USAGE: $0 <HOST> <CMD> [ARGS ...]"
+	exit 2
+fi
+
+mnexec -a $HOST_PID $@

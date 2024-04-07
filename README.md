@@ -1,6 +1,14 @@
 # Mininet-Sec
 Emulation platform for studying and experimenting cybersecurity tools in programmable networks
 
+Install and run:
+```
+git clone https://github.com/mininet-sec/mininet-sec
+cd mininet-sec
+python3 -m pip install .
+
+mnsec --topo=linear,3 --controller=remote,ip=127.0.0.1
+```
 
 ## Credits
 
