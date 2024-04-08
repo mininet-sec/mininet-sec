@@ -17,6 +17,7 @@ Example to pull custom params (topo, switch, etc.) from a file:
 import os
 import sys
 import time
+import traceback
 
 from functools import partial
 from optparse import OptionParser  # pylint: disable=deprecated-module
@@ -305,6 +306,8 @@ class MininetRunner( object ):
                          metavar='block|random',
                          help=( 'node placement for --cluster '
                                 '(experimental!) ' ) )
+        opts.add_option( '--workdir', '-W', type='string', default='/tmp/mnsec',
+                         help='Specify the working directory' )
 
         self.options, self.args = opts.parse_args()
 
@@ -404,6 +407,7 @@ class MininetRunner( object ):
                   xterms=opts.xterms, autoSetMacs=opts.mac,
                   autoStaticArp=opts.arp, autoPinCpus=opts.pin,
                   waitConnected=opts.wait,
+                  workDir=opts.workdir,
                   listenPort=opts.listenport )
 
         if opts.ensure_value( 'nat', False ):
@@ -444,9 +448,11 @@ if __name__ == "__main__":
     except Exception:  # pylint: disable=broad-except
         # Print exception
         type_, val_, trace_ = sys.exc_info()
+        trace_str = traceback.format_exc().replace("\n", ", ")
         errorMsg = ( "-"*80 + "\n" +
                      "Caught exception. Cleaning up...\n\n" +
                      "%s: %s\n" % ( type_.__name__, val_ ) +
+                     "Traceback: %s\n" % (trace_str) +
                      "-"*80 + "\n" )
         error( errorMsg )
         # Print stack trace to debug log
