@@ -308,6 +308,9 @@ class MininetRunner( object ):
                                 '(experimental!) ' ) )
         opts.add_option( '--workdir', '-W', type='string', default='/tmp/mnsec',
                          help='Specify the working directory' )
+        opts.add_option( '--apps', type='string', default='',
+                         metavar='h1=http,h1:ssh:port=22:ip=0.0.0.0,h2:snmp...',
+                         help=('Specify apps to be run on nodes') )
 
         self.options, self.args = opts.parse_args()
 
@@ -407,7 +410,7 @@ class MininetRunner( object ):
                   xterms=opts.xterms, autoSetMacs=opts.mac,
                   autoStaticArp=opts.arp, autoPinCpus=opts.pin,
                   waitConnected=opts.wait,
-                  workDir=opts.workdir,
+                  workDir=opts.workdir, apps=opts.apps,
                   listenPort=opts.listenport )
 
         if opts.ensure_value( 'nat', False ):

@@ -4,6 +4,7 @@ Node objects for Mininet-Sec
 LinuxServer: provides minimal functionatility to work as a server
 """
 import os
+import re
 import traceback
 
 from mininet.node import Node
@@ -42,33 +43,26 @@ class HostServices( Node ):
 
     def start( self, **moreParams ):
         self.params.update(moreParams)
+        homedir = self.params.get("homeDir", f"/tmp/mnsec/{self.name}")
+        os.makedirs(homedir, exist_ok=True)
 
         services = self.params.get("services", [])
         self.services = []
         for service in services:
             srv_name = service["name"]
-            cmd = SERVICES.get(srv_name, "").split(" ")
+            cmd = SERVICES.get(srv_name, "")
             if not cmd:
                 warn(f"Unknown service {service} for host {self.name}\n")
                 continue
-            for attr, value in service.items():
-                if attr == "name":
-                    continue
-                cmd.append("--"+attr)
-                cmd.append(value)
-            homedir = self.params.get("workDir", "/tmp/mnsec") + f"/{self.name}"
-            os.makedirs(homedir, exist_ok=True)
-            logfile = open(f"{homedir}/{srv_name}.log", "w")
-            try:
-                popen = self._popen(cmd, stdout=logfile, stderr=logfile)
-            except:
-                trace_str = traceback.format_exc().replace("\n", ", ")
-                warn(f"Error starting service {service} on {self.name}: {trace_str}\n")
+            args = [f"--{k} {v}" for k, v in service.items() if k != "name"]
+            logfile = f"{homedir}/{srv_name}.log"
+            cmd = "%s %s 2>&1 >%s &" % (cmd, " ".join(args), logfile)
+            result = self.cmd(cmd)
+            match = re.search("\[[0-9]+\] ([0-9]+)", result)
+            if not match:
+                warn(f"Failed to start service {service}: {result}\n")
                 continue
-            #result = self.cmd(cmd +  + f" 2>&1 >/tmp/{srv_name}.log &")
-            #if result:
-            #    warn(f"Output for service {service}: {result}\n")
-            self.services.append([service, popen.pid])
+            self.services.append([service, match.group(1)])
 
         # Enable forwarding on the router
         #self.cmd( 'sysctl net.ipv4.ip_forward=1' )

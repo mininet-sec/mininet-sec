@@ -25,7 +25,6 @@ setup(
     description='Emulation platform for cybersecurity tools in programmable networks',
     author='Italo Valcy',
     author_email='italovalcy@ufba.br',
-    packages=['mnsec'],
     long_description="""
         Mininet-Sec is a network emulator platform for studying and
         experimenting cybersecurity tools in programmable networks.
