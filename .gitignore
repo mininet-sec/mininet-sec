@@ -1,0 +1,10 @@
+*.pyc
+*~
+*.1
+mininet_sec.egg-info
+build
+.DS_Store
+.vagrant
+docs/html
+docs/latex
+docs/_build
