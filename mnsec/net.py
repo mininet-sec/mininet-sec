@@ -19,7 +19,7 @@ from mininet.net import Mininet, MininetWithControlNet
 
 import mnsec.apps.all
 from mnsec.apps.app_manager import AppManager
-from mnsec.nodelib import IPTablesFirewall
+from mnsec.nodelib import IPTablesFirewall, Host
 
 
 VERSION = "0.1.0"
@@ -36,8 +36,8 @@ class Mininet_sec(Mininet):
         self.apps = apps
         self.workDir = workDir
 
-        # TODO: initialize things here
         self.cleanups = []
+        kwargs.setdefault("host", Host)
 
         Mininet.__init__(self, **kwargs)
 
@@ -53,6 +53,8 @@ class Mininet_sec(Mininet):
 
         # start apps
         for app_str in self.apps.split(","):
+            if not app_str:
+                continue
             app_spec = app_str.split(":")
             if len(app_spec) < 2:
                 raise ValueError(f"Invalid apps param: {app_str}.")
@@ -73,6 +75,7 @@ class Mininet_sec(Mininet):
            params: other Firewall node params, notably:
                rules_v4: string, filename or dict(list) with IPv4 rules
                rules_v6: string, filename or dict(list) with IPv6 rules"""
+        params.setdefault('ip', None)
         fw = self.addHost( name, cls=IPTablesFirewall, **params )
         return fw
 

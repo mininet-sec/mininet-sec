@@ -9,7 +9,11 @@ import traceback
 
 from mininet.node import Node
 from mininet.log import info, error, warn, debug
+from mininet.moduledeps import pathCheck
 
+class Host( Node ):
+    """Mininet-Sec host."""
+    pass
 
 class IPTablesFirewall( Node ):
     "A Node with IPTables Linux Firewall."
@@ -30,7 +34,10 @@ class IPTablesFirewall( Node ):
         self.rules_v4 = rules_v4
         self.rules_v6 = rules_v6
 
-        self.fw_rules_v4 = f"self.params['homeDir']/iptables_v4.conf"
+
+    def create_rules_files(self):
+        """Create rules files to be used by iptables-restore."""
+        self.fw_rules_v4 = f"{self.params['homeDir']}/iptables_v4.conf"
         if isinstance(self.rules_v4, dict):
             f = open(self.fw_rules_v4, "w")
             for table in self.rules_v4:
@@ -45,7 +52,7 @@ class IPTablesFirewall( Node ):
             with open(self.fw_rules_v4, "w") as f:
                 f.write(self.rules_v4)
 
-        self.fw_rules_v6 = f"self.params['homeDir']/iptables_v6.conf"
+        self.fw_rules_v6 = f"{self.params['homeDir']}/iptables_v6.conf"
         if isinstance(self.rules_v6, dict):
             f = open(self.fw_rules_v6, "w")
             for table in self.rules_v6:
@@ -62,6 +69,8 @@ class IPTablesFirewall( Node ):
 
     def start( self, **moreParams ):
         self.params.update(moreParams)
+
+        self.create_rules_files()
 
         # Default policy DROP
         for command in ["iptables", "ip6tables"]:
@@ -94,3 +103,11 @@ class IPTablesFirewall( Node ):
             self.cmd("f{command} -t raw -F")
             self.cmd("f{command} -t raw -X")
         Node.terminate(self)
+
+    @classmethod
+    def setup( cls ):
+        """Check dependencies for iptables."""
+        pathCheck("iptables-restore", moduleName="iptables-persistent")
+        pathCheck("ip6tables-restore", moduleName="iptables-persistent")
+        pathCheck("iptables", moduleName="iptables")
+        pathCheck("ip6tables", moduleName="iptables")

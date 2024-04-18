@@ -24,7 +24,9 @@
 # If not, see <http://www.gnu.org/licenses/>.
 
 import re
-from mininet.log import warn
+import sys
+from mininet.log import warn, error
+from mininet.util import quietRun
 from mnsec.apps.application import Application
 from mnsec.apps.app_manager import AppManager
 
@@ -87,8 +89,7 @@ class HoneypotFactory(Application):
 for name in SERVICES:
     AppManager.register_app(name, HoneypotFactory, name=name)
 
-
-try:
-    import honeypots
-except ImportError as exc:
-    raise ImportError("honeypots is not installed") from exc
+# Check dependency on honeypots module
+if quietRun( 'python3 -m honeypots' ):
+    error("Cannot find required module honeypots.\n")
+    sys.exit(1)
