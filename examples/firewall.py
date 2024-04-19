@@ -15,6 +15,7 @@ from mnsec.topo import Topo
 from mnsec.net import Mininet_sec
 from mnsec.cli import CLI
 from mnsec.nodelib import IPTablesFirewall, NetworkTAP
+from mnsec.apps.app_manager import AppManager
 
 from mininet.nodelib import LinuxBridge
 from mininet.log import setLogLevel, info
@@ -71,6 +72,10 @@ def run():
     topo = NetworkTopo()
     net = Mininet_sec( topo=topo )
     net.start()
+    AppManager(net, [net.get("srv1")], "http")
+    AppManager(net, [net.get("srv1")], "https")
+    AppManager(net, [net.get("srv2")], "smtp")
+    AppManager(net, [net.get("srv2")], "imap")
     info( '*** Routing Table on firewall:\n' )
     info( net[ 'fw0' ].cmd( 'route' ) )
     info( '*** IPTables rules on filter table (v4):\n' )
