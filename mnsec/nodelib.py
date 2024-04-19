@@ -7,9 +7,12 @@ import os
 import re
 import traceback
 
-from mininet.node import Node
+from mininet.node import Node, OVSSwitch
+from mininet.link import Intf
 from mininet.log import info, error, warn, debug
 from mininet.moduledeps import pathCheck
+
+from mnsec.util import makeIntfSingle
 
 class Host( Node ):
     """Mininet-Sec host."""
@@ -43,7 +46,7 @@ class IPTablesFirewall( Node ):
             for table in self.rules_v4:
                 f.write(f"*{table}\n")
                 for rule in self.rules_v4[table]:
-                    f.write(f"*{rule}\n")
+                    f.write(f"{rule}\n")
                 f.write("COMMIT\n\n")
             f.close()
         elif isinstance(self.rules_v4, str) and os.path.isfile(self.rules_v4):
@@ -58,7 +61,7 @@ class IPTablesFirewall( Node ):
             for table in self.rules_v6:
                 f.write(f"*{table}\n")
                 for rule in self.rules_v6[table]:
-                    f.write(f"*{rule}\n")
+                    f.write(f"{rule}\n")
                 f.write("COMMIT\n\n")
             f.close()
         elif isinstance(self.rules_v6, str) and os.path.isfile(self.rules_v6):
@@ -111,3 +114,51 @@ class IPTablesFirewall( Node ):
         pathCheck("ip6tables-restore", moduleName="iptables-persistent")
         pathCheck("iptables", moduleName="iptables")
         pathCheck("ip6tables", moduleName="iptables")
+
+
+class NetworkTAP( OVSSwitch ):
+    """Network TAP for analysis, security or general network management.
+       Overwall functionality consists of:
+        - Port A will be the first attached link (mandatory)
+        - Port B will be the second attached link (mandatory)
+        - Mon A will be the attached link (optional). If no Mon A port
+          is provided, then a dummy interface will be created on the
+          format XXX-ethmonA (XXX is the node name)
+        - Mon B will be the 4th attached link (optional). If no Mon B port
+          is provided, then a dummy interface will be created on the
+          format XXX-ethmonB (XXX is the node name)
+    """
+    def __init__(self, name, port_a=1, port_b=2, mon_a=None, mon_b=None, mon_together=False, **kwargs):
+        """Wrapper to capture the port A and B, and monitor"""
+        self.port_a = port_a
+        self.port_b = port_b
+        self.mon_a = mon_a
+        self.mon_b = mon_b
+        self.mon_together = mon_together
+        # force batch False
+        kwargs["batch"] = False
+        OVSSwitch.__init__(self, name, **kwargs)
+
+    def start(self, controllers):
+        """Starts standard OVSSwitch and then add monitor ports."""
+        if not self.mon_a:
+            name_mon_a = f"{self.name}-ethmona"
+            makeIntfSingle(name_mon_a)
+            intf = Intf(name_mon_a, node=self)
+            self.mon_a = self.ports[intf]
+        if self.mon_together:
+            self.mon_b = self.mon_a
+        elif not self.mon_b:
+            name_mon_b = f"{self.name}-ethmonb"
+            makeIntfSingle(name_mon_b)
+            intf = Intf(name_mon_b, node=self)
+            self.mon_b = self.ports[intf]
+
+        OVSSwitch.start(self, [])
+
+        cmdOutA = self.dpctl("add-flow", f"in_port={self.port_a},actions=output:{self.port_b},output:{self.mon_a}")
+        cmdOutB = self.dpctl("add-flow", f"in_port={self.port_b},actions=output:{self.port_a},output:{self.mon_b}")
+        if cmdOutA:
+            error(f"Failed to setup monitor port A: {cmdOutA}")
+        if cmdOutB:
+            error(f"Failed to setup monitor port B: {cmdOutB}")

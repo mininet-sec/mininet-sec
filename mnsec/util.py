@@ -21,7 +21,9 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with Mini-NDN, e.g., in COPYING.md file.
-# If not, see <http://www.gnu.org/licenses/>.
+# Ifnot, see <http://www.gnu.org/licenses/>.
+
+from mininet.util import quietRun
 
 def popenGetEnv(node, envDict={}):
     env = {}
@@ -42,3 +44,17 @@ def popenGetEnv(node, envDict={}):
 def getPopen(host, cmd, envDict={}, **params):
     return host.popen(cmd, cwd=host.params['homeDir'],
                       env=popenGetEnv(host, envDict), **params)
+
+def makeIntfSingle(intf, deleteIntf=True, node=None):
+    """Make a single/dummy new interface. Parameters:
+       intf: name for the new interface
+       deleteIntf: delete interface before creating (optional)
+       node: node where interface will be attached (optional)
+       raises Exception on failure"""
+    runCmd = quietRun if not node else node.cmd
+    if deleteIntf:
+        runCmd(f"ip link del {intf}")
+    cmdOutput = runCmd(f"ip link add {intf} type dummy")
+    if cmdOutput:
+        raise Exception(f"Error creating interface {intf}: {cmdOutput}")
+    runCmd(f"ip link set up {intf}")
