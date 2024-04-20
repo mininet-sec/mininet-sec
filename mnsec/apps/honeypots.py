@@ -30,7 +30,7 @@ from mininet.util import quietRun
 from mnsec.apps.application import Application
 from mnsec.apps.app_manager import AppManager
 
-HONEYPOTS_PREFIX = "python3 -m honeypots --termination-strategy signal --setup"
+HONEYPOTS_PREFIX = "python3 -m honeypots --termination-strategy input --setup"
 
 SERVICES = {
     "dns": [HONEYPOTS_PREFIX + " dns", 53],
@@ -69,21 +69,23 @@ class HoneypotFactory(Application):
         self.logfile = f"{self.logDir}/{name}.log"
         self.cmd = SERVICES[name][0]
         params.setdefault("port", SERVICES[name][1])
+        self.name = name
         self.params = params
 
     def start(self):
         cmd = self.cmd 
         for k, v in self.params.items():
             cmd += f" --{k} {v}"
-        result = self.node.cmd(f"{cmd} 2>&1 >{self.logfile} &")
+        result = self.node.cmd(f"nohup {cmd} >{self.logfile} 2>&1 </dev/null &")
         match = re.search("\[[0-9]+\] ([0-9]+)", result)
         if not match:
             warn(f"Failed to start service {service} on {self.node.name}: {result}\n")
             return
-        self.pid =match.group(1)
+        self.pid = match.group(1)
 
     def stop(self):
-        self.node.cmd(f"kill {self.pid}")
+        #self.node.cmd(f"kill {self.pid}")
+        self.node.cmd(f"pkill -f 'python3 .*/honeypots/{self.name}_server.py --custom'")
 
 
 for name in SERVICES:

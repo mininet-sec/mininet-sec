@@ -21,7 +21,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with Mini-NDN, e.g., in COPYING.md file.
-# Ifnot, see <http://www.gnu.org/licenses/>.
+# If not, see <http://www.gnu.org/licenses/>.
 
 from mininet.util import quietRun
 

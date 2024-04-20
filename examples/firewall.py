@@ -17,6 +17,7 @@ from mnsec.cli import CLI
 from mnsec.nodelib import IPTablesFirewall, NetworkTAP
 from mnsec.apps.app_manager import AppManager
 
+from mininet.node import NullController
 from mininet.nodelib import LinuxBridge
 from mininet.log import setLogLevel, info
 
@@ -70,7 +71,7 @@ def run():
     "Test Firewall scenario"
     info( 'Starting Mininet-Sec\n' )
     topo = NetworkTopo()
-    net = Mininet_sec( topo=topo )
+    net = Mininet_sec( topo=topo, controller=NullController )
     net.start()
     AppManager(net, [net.get("srv1")], "http")
     AppManager(net, [net.get("srv1")], "https")
