@@ -8,7 +8,7 @@ from os.path import join
 # Get version number from source tree
 #import sys
 #sys.path.append( '.' )
-from mnsec.net import VERSION
+VERSION = "0.1.0"
 
 scripts = [ join( 'bin', filename ) for filename in [ 'mnsec', 'mnsecx' ] ]
 
