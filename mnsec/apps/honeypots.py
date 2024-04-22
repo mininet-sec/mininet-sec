@@ -92,6 +92,6 @@ for name in SERVICES:
     AppManager.register_app(name, HoneypotFactory, name=name)
 
 # Check dependency on honeypots module
-if quietRun( 'python3 -m honeypots' ):
+if quietRun('python3 -c "import honeypots"', shell=True):
     error("Cannot find required module honeypots.\n")
     sys.exit(1)
