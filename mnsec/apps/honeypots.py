@@ -79,7 +79,7 @@ class HoneypotFactory(Application):
         result = self.node.cmd(f"nohup {cmd} >{self.logfile} 2>&1 </dev/null &")
         match = re.search("\[[0-9]+\] ([0-9]+)", result)
         if not match:
-            warn(f"Failed to start service {service} on {self.node.name}: {result}\n")
+            warn(f"Failed to start service {self.name} on {self.node.name}: {result}\n")
             return
         self.pid = match.group(1)
 
