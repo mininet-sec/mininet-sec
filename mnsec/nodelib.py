@@ -123,10 +123,10 @@ class NetworkTAP( OVSSwitch ):
         - Port B will be the second attached link (mandatory)
         - Mon A will be the attached link (optional). If no Mon A port
           is provided, then a dummy interface will be created on the
-          format XXX-ethmonA (XXX is the node name)
+          format XXX-eth1001 (XXX is the node name)
         - Mon B will be the 4th attached link (optional). If no Mon B port
           is provided, then a dummy interface will be created on the
-          format XXX-ethmonB (XXX is the node name)
+          format XXX-eth1002 (XXX is the node name)
     """
     def __init__(self, name, port_a=1, port_b=2, mon_a=None, mon_b=None, mon_together=False, **kwargs):
         """Wrapper to capture the port A and B, and monitor"""
@@ -142,14 +142,14 @@ class NetworkTAP( OVSSwitch ):
     def start(self, controllers):
         """Starts standard OVSSwitch and then add monitor ports."""
         if not self.mon_a:
-            name_mon_a = f"{self.name}-ethmona"
+            name_mon_a = f"{self.name}-eth1001"
             makeIntfSingle(name_mon_a)
             intf = Intf(name_mon_a, node=self)
             self.mon_a = self.ports[intf]
         if self.mon_together:
             self.mon_b = self.mon_a
         elif not self.mon_b:
-            name_mon_b = f"{self.name}-ethmonb"
+            name_mon_b = f"{self.name}-eth1002"
             makeIntfSingle(name_mon_b)
             intf = Intf(name_mon_b, node=self)
             self.mon_b = self.ports[intf]
