@@ -20,6 +20,7 @@ from mnsec.apps.app_manager import AppManager
 from mininet.node import NullController
 from mininet.nodelib import LinuxBridge
 from mininet.log import setLogLevel, info
+from mininet.util import run
 
 class NetworkTopo( Topo ):
     """A scenario with IPTables firewall, servers and client hosts."""
@@ -48,14 +49,19 @@ class NetworkTopo( Topo ):
                 '-A FORWARD -s 192.168.1.0/24 -p tcp -m multiport --dports 80,443 -j ACCEPT',
                 '-A FORWARD -d 10.0.0.1 -p tcp -m multiport --dports 80,443 -j ACCEPT',
                 '-A FORWARD -d 10.0.0.2 -p tcp -m multiport --dports 25,143,110 -j ACCEPT',
+                '-A FORWARD -o fw0-eth99 -j ACCEPT'
+            ],
+            "nat": [
+                '-A POSTROUTING -o fw0-eth99 -j MASQUERADE',
             ]
         }
 
-        fw0 = self.addFirewall('fw0', rules_v4=rules_v4)
+        fw0 = self.addFirewall('fw0', rules_v4=rules_v4, defaultRoute='via 172.31.99.254')
 
         s1 = self.addSwitch('s1', cls=LinuxBridge)
         s2 = self.addSwitch('s2', cls=LinuxBridge)
         nettap1 = self.addSwitch('nettap1', cls=NetworkTAP)
+        s99 = self.addSwitch('s99', cls=LinuxBridge)
 
         self.addLink(s1, h1)
         self.addLink(s1, h2)
@@ -64,10 +70,11 @@ class NetworkTopo( Topo ):
         self.addLink(s2, srv2)
         self.addLink(s1, fw0, ipv4_node2='192.168.1.1/24')
         self.addLink(s2, fw0, ipv4_node2='10.0.0.254/24')
+        self.addLink(s99, fw0, ipv4_node2='172.31.99.1/24', port2=99)
         self.addLink(nettap1, fw0, ipv4_node2='203.0.113.200/24')
         self.addLink(nettap1, outside)
 
-def run():
+def main():
     "Test Firewall scenario"
     info( 'Starting Mininet-Sec\n' )
     topo = NetworkTopo()
@@ -77,16 +84,27 @@ def run():
     AppManager(net, [net.get("srv1")], "https")
     AppManager(net, [net.get("srv2")], "smtp")
     AppManager(net, [net.get("srv2")], "imap")
+    info( '*** Configure host bridges:\n' )
+    run( 'iptables -I FORWARD -i s1-+ -j ACCEPT' )
+    run( 'iptables -I FORWARD -i s2-+ -j ACCEPT' )
+    run( 'iptables -I FORWARD -i s99-+ -j ACCEPT' )
+    run( 'ip addr add 172.31.99.254/24 dev s99' )
+    run( 'iptables -t nat -A POSTROUTING -s 172.31.99.0/24 -j MASQUERADE')
     info( '*** Routing Table on firewall:\n' )
-    info( net[ 'fw0' ].cmd( 'route' ) )
+    info( net[ 'fw0' ].cmd( 'ip route show' ) )
     info( '*** IPTables rules on filter table (v4):\n' )
     info( net[ 'fw0' ].cmd( 'iptables -L -n -v' ) )
     info( '*** IPTables rules on filter table (v6):\n' )
     info( net[ 'fw0' ].cmd( 'ip6tables -L -n -v' ) )
     CLI( net )
     net.stop()
+    info( '*** Cleanup host bridges:\n' )
+    run( 'iptables -D FORWARD -i s1-+ -j ACCEPT' )
+    run( 'iptables -D FORWARD -i s2-+ -j ACCEPT' )
+    run( 'iptables -D FORWARD -i s99-+ -j ACCEPT' )
+    run( 'iptables -t nat -D POSTROUTING -s 172.31.99.0/24 -j MASQUERADE')
 
 
 if __name__ == '__main__':
     setLogLevel( 'info' )
-    run()
+    main()
