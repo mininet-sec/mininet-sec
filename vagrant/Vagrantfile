@@ -1,0 +1,16 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# This vagrant box is built with Debain 11 basebox from generic. Mininet-Sec
+# is pre-installed in this box. Recommended resource allocation:
+# memory = "4096" cpus = "4". However, modifiy the memory, cups and other
+# configuration as per your need.
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "italovalcy/mininet-sec"
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = "4096"
+    vb.cpus = "4"
+    vb.name = "mininet-sec"
+  end
+end
