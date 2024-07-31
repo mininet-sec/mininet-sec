@@ -20,7 +20,7 @@ from subprocess import call
 
 from mininet.net import Mininet, MininetWithControlNet
 from mininet.node import OVSSwitch
-from mininet.log import info, error, warn, debug
+from mininet.log import info, error, output, warn, debug
 from mininet.util import quietRun
 from mininet import cli, util
 
@@ -223,6 +223,12 @@ class Mininet_sec(Mininet):
             cli.CLI.do_sh = orig_cli_do_sh
 
         return cmdOut
+
+    def nmap(self, node, *args):
+        """Run Nnmap from a given host."""
+        node = node if not isinstance( node, str ) else self[ node ]
+        output(node.cmd("nmap " + " ".join(args)))
+
 
 class MininetSecWithControlNet(MininetWithControlNet):
     """Control network support."""
