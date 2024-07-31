@@ -28,6 +28,7 @@ class NetworkTopo( Topo ):
         h1 = self.addHost('h1', ip='192.168.1.101/24', defaultRoute='via 192.168.1.1')
         h2 = self.addHost('h2', ip='192.168.1.102/24', defaultRoute='via 192.168.1.1')
         h3 = self.addHost('h3', ip='192.168.1.103/24', defaultRoute='via 192.168.1.1')
+        lo1 = self.addHost('lo1')
 
         srv1 = self.addHost('srv1', ip='10.0.0.1/24', defaultRoute='via 10.0.0.254')
         srv2 = self.addHost('srv2', ip='10.0.0.2/24', defaultRoute='via 10.0.0.254')
@@ -66,6 +67,7 @@ class NetworkTopo( Topo ):
         self.addLink(s1, h1)
         self.addLink(s1, h2)
         self.addLink(s1, h3)
+        self.addLink(h3, lo1)
         self.addLink(s2, srv1)
         self.addLink(s2, srv2)
         self.addLink(s1, fw0, ipv4_node2='192.168.1.1/24')
@@ -84,6 +86,7 @@ def main():
     AppManager(net, [net.get("srv1")], "https")
     AppManager(net, [net.get("srv2")], "smtp")
     AppManager(net, [net.get("srv2")], "imap")
+    AppManager(net, [net.get("lo1")], "loopback")
     info( '*** Configure host bridges:\n' )
     run( 'iptables -I FORWARD -i s1-+ -j ACCEPT' )
     run( 'iptables -I FORWARD -i s2-+ -j ACCEPT' )
