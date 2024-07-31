@@ -1,0 +1,15 @@
+.app-header {
+    height: 60px;
+    line-height: 60px;
+    border-bottom: thin lightgrey solid;
+    margin-bottom: 10px;
+    font-size: 34px;
+    padding-left: 5px;
+}
+
+.app-footer {
+    height: 60px;
+    line-height: 60px;
+    border-top: thin lightgrey solid;
+    margin-top: 10px;
+}

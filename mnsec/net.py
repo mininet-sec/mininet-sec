@@ -9,16 +9,20 @@
 
 import re
 import socket
+import sys
 
 from itertools import chain, groupby
 from threading import Thread as thread
 from time import sleep
-from sys import exit
+from contextlib import redirect_stdout
+from io import StringIO
+from subprocess import call
 
 from mininet.net import Mininet, MininetWithControlNet
 from mininet.node import OVSSwitch
 from mininet.log import info, error, warn, debug
 from mininet.util import quietRun
+from mininet import cli, util
 
 import mnsec.apps.all
 from mnsec.apps.app_manager import AppManager
@@ -56,6 +60,7 @@ class Mininet_sec(Mininet):
         self.run_api_server = enable_api
 
         self.cleanups = []
+        self.cli = None
 
         if self.run_api_server:
             self.api_server = APIServer(self)
@@ -68,12 +73,7 @@ class Mininet_sec(Mininet):
     def start(self):
         """Start nodes, apps and call Mininet to finish the startup."""
         for host in self.hosts:
-            homeDir = f"{self.workDir}/{host.name}"
-            host.params["homeDir"] = homeDir
-            host.cmd(f"mkdir -p {homeDir}")
-            host.cmd(f"export HOME={homeDir} && cd ~")
-            if hasattr(host, "start"):
-                host.start()
+            self.startHost(host)
 
         # start apps
         for app_str in self.apps.split(","):
@@ -94,6 +94,23 @@ class Mininet_sec(Mininet):
         if self.run_api_server:
             self.api_server.setup()
             self.api_server.start()
+
+    def setupHostHomeDir(self, host):
+        """Setup host home dir."""
+        host = host if not isinstance( host, str ) else self[ host ]
+        homeDir = f"{self.workDir}/{host.name}"
+        host.params["homeDir"] = homeDir
+        host.cmd(f"mkdir -p {homeDir}")
+        return homeDir
+
+    def startHost(self, host):
+        """Start hosts."""
+        if not host:
+            return
+        homeDir = self.setupHostHomeDir(host)
+        host.cmd(f"export HOME={homeDir} && cd ~")
+        if hasattr(host, "start"):
+            host.start()
 
     def enable_sflow(self):
         """Enable sflow on switches."""
@@ -149,6 +166,17 @@ class Mininet_sec(Mininet):
             ipv6_node2: IPv6 address to configure on node2
             params: additional link params (optional)
             returns: link object"""
+        node1 = node1 if not isinstance( node1, str ) else self[ node1 ]
+        node2 = node2 if not isinstance( node2, str ) else self[ node2 ]
+        # fix for cases where node1 == node2
+        if node1.name == node2.name:
+            newPort = node1.newPort()
+            if "port1" not in params:
+                params["port1"] = newPort
+                newPort += 1
+            if "port2" not in params or params["port2"] == params["port1"]:
+                params["port2"] = newPort
+
         link = Mininet.addLink(self, node1, node2, **params)
 
         if ipv4_node1:
@@ -161,6 +189,40 @@ class Mininet_sec(Mininet):
             link.intf2.setIP(ipv6_node2)
 
         return link
+
+    def run_cli(self, cmd):
+        """Run on CLI if available."""
+        if not self.cli:
+            return
+
+        def wrapper_output(msg, *args, **kwargs):
+            print(msg, *args, end="")
+
+        def wrapper_do_sh(self, line):
+            print(quietRun(line), end="")
+
+        orig_cli_output = cli.output
+        orig_util_output = util.output
+        orig_cli_do_sh = cli.CLI.do_sh
+        orig_stdout = sys.stdout
+        cli.CLI.do_sh = wrapper_do_sh
+        cli.output = wrapper_output
+        util.output = wrapper_output
+        io_str = StringIO()
+        sys.stdout = io_str
+
+        try:
+            self.cli.onecmd(cmd)
+            cmdOut = io_str.getvalue()
+        except Exception as exc:
+            cmdOut = f"Error running cmd: {exc}"
+        finally:
+            sys.stdout = orig_stdout
+            cli.output = orig_cli_output
+            util.output = orig_util_output
+            cli.CLI.do_sh = orig_cli_do_sh
+
+        return cmdOut
 
 class MininetSecWithControlNet(MininetWithControlNet):
     """Control network support."""

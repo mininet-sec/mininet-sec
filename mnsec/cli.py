@@ -18,6 +18,7 @@ class CLI(MN_CLI):
             MN_CLI.locals = { 'net': mnsec }
             self.do_cmd(self.cmd)
             return
+        mnsec.cli = self
         MN_CLI.__init__(self, mnsec, stdin=stdin, script=script)
 
     def do_cmd(self, cmd):

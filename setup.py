@@ -12,13 +12,15 @@ VERSION = "0.1.0"
 
 scripts = [ join( 'bin', filename ) for filename in [ 'mnsec', 'mnsecx' ] ]
 
+modname = distname = 'mininet-sec'
+
 with open("requirements.txt", "r", encoding="utf8") as file:
     install_requires = [line.strip() for line in file
                         if not line.startswith("#")]
 
 
 setup(
-    name="mininet-sec",
+    name=distname,
     version=VERSION,
     description='Emulation platform for cybersecurity tools in programmable networks',
     author='Italo Valcy',
@@ -39,4 +41,5 @@ setup(
     license='BSD',
     install_requires=install_requires,
     scripts=scripts,
+    package_data={"mnsec.assets": ["*"],"mnsec.templates": ["*"]},
 )
