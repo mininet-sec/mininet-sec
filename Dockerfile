@@ -9,7 +9,7 @@ RUN apt-get update \
 		bridge-utils nmap hping3 mininet iperf3 hydra iproute2 \
 		python3-pip libpq-dev openvswitch-testcontroller curl d-itg \
  && rm -f /usr/lib/python3.11/EXTERNALLY-MANAGED \
- && python3 -m pip install -e git+https://github.com/mininet-sec/mininet-sec@main#egg=mininet-sec \
+ && python3 -m pip install -e git+https://github.com/mininet-sec/mininet-sec@main#egg=mnsec \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /src/mininet-sec
