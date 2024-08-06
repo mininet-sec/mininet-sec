@@ -4,3 +4,4 @@ requests==2.28.2
 setuptools==69.2.0
 dash
 dash-cytoscape
+flask-socketio

@@ -38,8 +38,9 @@ setup(
           "Topic :: Security",
     ],
     keywords='networking emulator cybersecurity',
-    license='BSD',
+    license='GPL-3',
     install_requires=install_requires,
     scripts=scripts,
+    packages=find_packages(exclude=['vagrant']),
     package_data={"mnsec.assets": ["*"],"mnsec.templates": ["*"]},
 )
