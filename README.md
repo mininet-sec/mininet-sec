@@ -47,20 +47,20 @@ In general, the main requirements for Mininet-Sec are:
 
 The following steps were executed in a Debian 12 system:
 
-1. Install basic requirements:
+1. Install basic requirements (root privileges required):
 ```
-sudo apt-get update
-sudo apt-get install iputils-ping net-tools tcpdump x11-xserver-utils xterm iperf socat telnet tmux git iptables-persistent bridge-utils nmap hping3 mininet iperf3 hydra iproute2 python3-pip libpq-dev openvswitch-testcontroller curl d-itg
+apt-get update
+apt-get install iputils-ping net-tools tcpdump x11-xserver-utils xterm iperf socat telnet tmux git iptables-persistent bridge-utils nmap hping3 mininet iperf3 hydra iproute2 python3-pip libpq-dev openvswitch-testcontroller curl d-itg
 ```
 
 When asked to save current IPv4/IPv6 rules, you can answer *no*. When asked to start Iperf3 as a daemon automatically, you can also answer *no*.
 
-2. Install Mininet-Sec:
+2. Install Mininet-Sec (root privileges required):
 
 ```
 git clone https://github.com/mininet-sec/mininet-sec
 cd mininet-sec
-sudo python3 -m pip install --break-system-packages .
+python3 -m pip install --break-system-packages .
 service openvswitch-switch start
 ```
 
@@ -74,17 +74,17 @@ Using Mininet-Sec
 
 After the installation (or docker container instantiation), execute Mininet-sec with the following commands:
 
-- Example 01: basic execution to make sure the installation was successfull:
+- Example 01: basic execution to make sure the installation was successfull (root privileges required):
 ```
-sudo mnsec --switch lxbr --topo=linear,3 --apps h1:ssh:port=22,h1:http:port=80,h3:smtp,h3:imap --test nmap,h1,10.0.0.0/24
+mnsec --switch lxbr --topo=linear,3 --apps h1:ssh:port=22,h1:http:port=80,h3:smtp,h3:imap --test nmap,h1,10.0.0.0/24
 ```
 
 The execution above should take a couple of seconds, and all output will be displayed at the end (be patiant). After finishing with nmap scan, Mininet-Sec will report the results and close.
 
-- Example 02: using Mininet-Sec in interactive mode and standard topologies:
+- Example 02: using Mininet-Sec in interactive mode and standard topologies (root privileges required):
 
 ```
-sudo mnsec --topo linear,3 --apps h1:ssh:port=22,h1:http:port=80,h2:ldap,h3:smtp,h3:imap,h3:pop3
+mnsec --topo linear,3 --apps h1:ssh:port=22,h1:http:port=80,h2:ldap,h3:smtp,h3:imap,h3:pop3
 ```
 
 After executing the command above, you should see a prompt saying: `mininet-sec>`. From that prompt you can run commands just like mininet:
@@ -107,18 +107,18 @@ mininet-sec> exit
 
 On the commands above we leveraged the OVS Test Controller just to make sure OpenFlow tables on the switch gets properly populated (ideally you should run a more robust SDN Controller, such as Kytos-ng, Faucet, OpenDayLight, ONOS, etc). If you want to use a custom controller, just add the option `--controller=remote,ip=x.y.z.w` to the mnsec command (just like Mininet).
 
-- Example 03: using a custom topology via Python API - for this example we will use two terminal windows:
+- Example 03: using a custom topology via Python API - for this example we will use two terminal windows (root privileges required):
 
 ```
-sudo python3 examples/firewall.py
+python3 examples/firewall.py
 ```
 
-After running the command above, you should see again the Mininet-Sec prompt `mininet-sec>`. For the purpose of this example, please open a new terminal window to run the commands below:
+After running the command above, you should see again the Mininet-Sec prompt `mininet-sec>`. For the purpose of this example, please open a new terminal window to run the commands below (root privileges required):
 
 ```
 curl -LO https://raw.githubusercontent.com/danielmiessler/SecLists/master/Usernames/top-usernames-shortlist.txt
 curl -LO https://raw.githubusercontent.com/danielmiessler/SecLists/master/Passwords/Common-Credentials/top-passwords-shortlist.txt
-sudo mnsecx o1 hydra -L top-usernames-shortlist.txt -P top-usernames-shortlist.txt imap://10.0.0.2/LOGIN
+mnsecx o1 hydra -L top-usernames-shortlist.txt -P top-usernames-shortlist.txt imap://10.0.0.2/LOGIN
 ```
 
 The command above leverages `mnsecx` utility to run a command inside the host `o1`, which facilitate the command execution on Mininet-Sec hosts outside the prompt. The example above can be ilustrated with the following image:
