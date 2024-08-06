@@ -23,6 +23,19 @@ The main goals/contributions/features for Mininet-Sec are:
 Getting started
 ===============
 
+Installation
+------------
+
+There are two ways of running Mininet-Sec: 1) using Docker; 2) installing from source. The easiest way of running Mininet-Sec is via Docker containers:
+```
+docker pull hackinsdn/mininet-sec
+docker run --rm -it --privileged -v /lib/modules:/lib/modules hackinsdn/mininet-sec /bin/bash
+```
+
+With the commands above you will instantiate and attach to Mininet-Sec's docker container. Privileged mode is required to be able to create network interfaces, namespaces, etc. The /lib/modules volume is needed to load openvswitch kernel module if needed (OpenFlow switch). There are other ways of running Mininet-Sec container, please refer to the entrypoint help to get more use cases: `docker run --rm hackinsdn/mininet-sec --help`
+
+If you prefer to install from source, please continue reading. Otherwise, you can jump into the "Using Mininet-Sec" section.
+
 Mininet-Sec can be easily installed on Debian and Ubuntu system. Other Linux distributions can also be used with some adjusments on the commands below or some level of manual effort.
 
 In general, the main requirements for Mininet-Sec are:
@@ -56,7 +69,10 @@ service openvswitch-switch start
 *Note2:* just after installing Mininet-Sec, the commands above start the OpenVSwitch daemon, just to make sure OVS is running for the examples below.
 
 
-3. Execute Mininet-sec:
+Using Mininet-Sec
+-----------------
+
+After the installation (or docker container instantiation), execute Mininet-sec with the following commands:
 
 - Example 01: basic execution to make sure the installation was successfull:
 ```
