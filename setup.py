@@ -12,7 +12,7 @@ VERSION = "0.1.0"
 
 scripts = [ join( 'bin', filename ) for filename in [ 'mnsec', 'mnsecx' ] ]
 
-modname = distname = 'mininet-sec'
+modname = distname = 'mnsec'
 
 with open("requirements.txt", "r", encoding="utf8") as file:
     install_requires = [line.strip() for line in file
@@ -41,6 +41,7 @@ setup(
     license='GPL-3',
     install_requires=install_requires,
     scripts=scripts,
-    packages=find_packages(exclude=['vagrant']),
+    packages=["mnsec"],
+    package_data={"mnsec": ["assets/*", "templates/*"]},
     package_data={"mnsec.assets": ["*"],"mnsec.templates": ["*"]},
 )

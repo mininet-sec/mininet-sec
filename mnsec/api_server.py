@@ -3,7 +3,7 @@ import flask
 import threading
 from flask_socketio import SocketIO, disconnect
 #from werkzeug.serving import make_server
-from dash import Dash, html, dcc, Input, Output, State, callback, clientside_callback
+from dash import Dash, html, dcc, Input, Output, State, callback, clientside_callback, get_asset_url
 import dash_cytoscape as cyto
 from mininet.log import info, warning
 
@@ -152,6 +152,7 @@ class APIServer:
                 className="eight columns",
                 id="topology",
                 children = [
+                    html.Img(src=get_asset_url('mininet-sec.png')),
                     cyto.Cytoscape(
                         id="cytoscape",
                         layout={"name": "cose"},

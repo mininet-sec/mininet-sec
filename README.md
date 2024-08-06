@@ -14,6 +14,11 @@ network programmability, enables fast, effective and skilled development of secu
 be used in a variety of scenarios, including secure interdomain routing, DDoS attacks, and network security 
 teaching, interactive development, testing, etc..
 
+The main goals/contributions/features for Mininet-Sec are:
+
+- Easily deploy network scenarios for experimentation with cybersecurity (i.e., custom topologies, common network services, common cybersecurity tools and components)
+- Topology visualization: mininet-sec comes with a Dash web app which allows topology visualization, command execution (terminal shell over web), addition/removal of switches, links, hosts, etc. 
+- Enriched node library: Mininet-Sec is shipped with additional node types for Firewall, Software TAP, P4 Switches, etc, which helps provisioning diverse scenarios.
 
 Getting started
 ===============
@@ -32,7 +37,7 @@ The following steps were executed in a Debian 12 system:
 1. Install basic requirements:
 ```
 sudo apt-get update
-sudo apt-get install git iptables-persistent bridge-utils nmap hping3 mininet iperf3 hydra iproute2 python3-pip libpq-dev openvswitch-testcontroller curl
+sudo apt-get install git iptables-persistent bridge-utils nmap hping3 mininet iperf3 hydra iproute2 python3-pip libpq-dev openvswitch-testcontroller curl d-itg
 ```
 
 When asked to save current IPv4/IPv6 rules, you can answer *no*. When asked to start Iperf3 as a daemon automatically, you can also answer *no*.
@@ -103,8 +108,13 @@ curl -LO https://raw.githubusercontent.com/danielmiessler/SecLists/master/Passwo
 sudo mnsecx o1 hydra -L top-usernames-shortlist.txt -P top-usernames-shortlist.txt imap://10.0.0.2/LOGIN
 ```
 
-The command above leverages `mnsecx` utility to run a command inside the host `o1`, which facilitate the command execution on Mininet-Sec hosts outside the prompt.
+The command above leverages `mnsecx` utility to run a command inside the host `o1`, which facilitate the command execution on Mininet-Sec hosts outside the prompt. The example above can be ilustrated with the following image:
 
+![example03](./examples/example03.png)
+
+You can also open your internet browser app and point to Mininet-Sec web UI via http://127.0.0.1:8050/ and you should see something similar to:
+
+![example03-web](./examples/example03-web.png)
 
 ## Credits
 
