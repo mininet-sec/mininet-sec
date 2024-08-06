@@ -43,5 +43,4 @@ setup(
     scripts=scripts,
     packages=["mnsec"],
     package_data={"mnsec": ["assets/*", "templates/*"]},
-    package_data={"mnsec.assets": ["*"],"mnsec.templates": ["*"]},
 )
