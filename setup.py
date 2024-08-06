@@ -42,5 +42,5 @@ setup(
     install_requires=install_requires,
     scripts=scripts,
     packages=["mnsec"],
-    package_data={"mnsec": ["assets/*", "templates/*"]},
+    package_data={"mnsec": ["assets/*", "templates/*", "apps/*", "server/*"]},
 )
