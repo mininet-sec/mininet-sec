@@ -37,7 +37,7 @@ The following steps were executed in a Debian 12 system:
 1. Install basic requirements:
 ```
 sudo apt-get update
-sudo apt-get install git iptables-persistent bridge-utils nmap hping3 mininet iperf3 hydra iproute2 python3-pip libpq-dev openvswitch-testcontroller curl d-itg
+sudo apt-get install iputils-ping net-tools tcpdump x11-xserver-utils xterm iperf socat telnet tmux git iptables-persistent bridge-utils nmap hping3 mininet iperf3 hydra iproute2 python3-pip libpq-dev openvswitch-testcontroller curl d-itg
 ```
 
 When asked to save current IPv4/IPv6 rules, you can answer *no*. When asked to start Iperf3 as a daemon automatically, you can also answer *no*.
@@ -51,7 +51,7 @@ sudo python3 -m pip install --break-system-packages .
 service openvswitch-switch start
 ```
 
-*Note*: the parameter `--break-system-packages` was used above to simplify the installation of Mininet-Sec, however a best approach would be to setup an virtual environment and install mininet-sec over there.
+*Note*: the parameter `--break-system-packages` was used above to simplify the installation of Mininet-Sec, however a best approach would be to setup a virtual environment and install mininet-sec over there.
 
 *Note2:* just after installing Mininet-Sec, the commands above start the OpenVSwitch daemon, just to make sure OVS is running for the examples below.
 
@@ -60,7 +60,7 @@ service openvswitch-switch start
 
 - Example 01: basic execution to make sure the installation was successfull:
 ```
-mnsec --switch lxbr --topo=linear,3 --apps h1:ssh:port=22,h1:http:port=80,h3:smtp,h3:imap --test nmap,h1,10.0.0.0/24
+sudo mnsec --switch lxbr --topo=linear,3 --apps h1:ssh:port=22,h1:http:port=80,h3:smtp,h3:imap --test nmap,h1,10.0.0.0/24
 ```
 
 The execution above should take a couple of seconds, and all output will be displayed at the end (be patiant). After finishing with nmap scan, Mininet-Sec will report the results and close.
@@ -68,13 +68,12 @@ The execution above should take a couple of seconds, and all output will be disp
 - Example 02: using Mininet-Sec in interactive mode and standard topologies:
 
 ```
-sudo mnsec --topo linear,3 --apps h1:ssh:port=22,h1:http:port=80,h2:ldap,h3:smtp,h3:imap,h3:pop3 --controller=remote,ip=127.0.0.1
+sudo mnsec --topo linear,3 --apps h1:ssh:port=22,h1:http:port=80,h2:ldap,h3:smtp,h3:imap,h3:pop3
 ```
 
 After executing the command above, you should see a prompt saying: `mininet-sec>`. From that prompt you can run commands just like mininet:
 
 ```
-mininet-sec> sh ovs-testcontroller --detach ptcp:6653
 mininet-sec> h1 nmap 10.0.0.3
 Starting Nmap 7.93 ( https://nmap.org ) at 2024-08-06 08:47 UTC
 Nmap scan report for 10.0.0.3
@@ -88,11 +87,9 @@ MAC Address: 8A:88:D8:C4:D4:4F (Unknown)
 
 Nmap done: 1 IP address (1 host up) scanned in 13.52 seconds
 mininet-sec> exit
-
-# pkill -f ovs-testcontroller
 ```
 
-On the commands above we started the OVS Test Controller just to make sure OpenFlow tables on the switch gets properly populated (ideally you should run a more robust SDN Controller, such as Kytos-ng, Faucet, OpenDayLight, ONOS, etc). After finishing Mininet-Sec, we finished the ovs controller.
+On the commands above we leveraged the OVS Test Controller just to make sure OpenFlow tables on the switch gets properly populated (ideally you should run a more robust SDN Controller, such as Kytos-ng, Faucet, OpenDayLight, ONOS, etc). If you want to use a custom controller, just add the option `--controller=remote,ip=x.y.z.w` to the mnsec command (just like Mininet).
 
 - Example 03: using a custom topology via Python API - for this example we will use two terminal windows:
 
