@@ -2,7 +2,7 @@
 set -e
 
 usage() {
-  echo "docker run italovalcy/mininet-sec [options]"
+  echo "docker run hackinsdn/mininet-sec [options]"
   echo "    -h, --help                    display help information"
   echo "    /path/program ARG1 .. ARGn    execute the specified local program"
   echo "    URL ARG1 .. ARGn              download script from URL and execute it"
