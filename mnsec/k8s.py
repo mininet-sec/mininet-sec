@@ -5,12 +5,6 @@ import os
 import sys
 import json
 
-from kubernetes import config
-from kubernetes.client import Configuration
-from kubernetes.client.api import core_v1_api
-from kubernetes.client.rest import ApiException
-from kubernetes.stream import stream
-
 from mininet.log import info, error, warn, debug
 from mininet.node import Node
 from mininet.moduledeps import pathCheck
@@ -27,8 +21,6 @@ try:
         ).read()
 except:
     NAMESPACE = "default"
-
-config.load_kube_config()
 
 
 class K8sPod(Node):
@@ -57,7 +49,6 @@ class K8sPod(Node):
         self.k8s_pod_ip = None
         self.k8s_env = env
         self.waitRunning = waitRunning
-        self.v1_api = core_v1_api.CoreV1Api()
         Node.__init__(self, name, **params)
 
     def startShell(self, **moreParams):
