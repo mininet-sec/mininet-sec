@@ -212,7 +212,7 @@ class Mininet_sec(Mininet):
             networks[host.name] = mynetworks 
             g.add_node(host.name)
 
-        for link in net.links:
+        for link in self.links:
             if (
                 link.intf1.node == link.intf2.node or
                 link.intf1.node.name not in g.nodes() or
