@@ -13,19 +13,10 @@ from mininet.clean import addCleanupCallback
 
 
 KUBECTL=None
-try:
-    NAMESPACE = os.getenv("NAMESPACE")
-    if not NAMESPACE:
-        NAMESPACE = open(
-            "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
-        ).read()
-except:
-    NAMESPACE = "default"
 
 
 class K8sPod(Node):
     "A Node running on Kubernetes as a Pod."
-    namespace = NAMESPACE
     initialized = False
 
     def __init__(
