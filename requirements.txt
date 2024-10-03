@@ -5,3 +5,4 @@ setuptools==69.2.0
 dash
 dash-cytoscape
 flask-socketio
+networkx
