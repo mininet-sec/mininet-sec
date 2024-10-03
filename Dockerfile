@@ -11,8 +11,11 @@ RUN apt-get update \
 		gcc python3-dev \
  && rm -f /usr/lib/python3.11/EXTERNALLY-MANAGED \
  && python3 -m pip install -e git+https://github.com/mininet-sec/mininet-sec@main#egg=mnsec \
+ && cd /tmp \
+ && curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
+ && install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl \
  && apt-get clean \
- && rm -rf /var/lib/apt/lists/*
+ && rm -rf /var/lib/apt/lists/* /tmp/*
 
 WORKDIR /src/mnsec
 COPY docker-entrypoint.sh /docker-entrypoint.sh
