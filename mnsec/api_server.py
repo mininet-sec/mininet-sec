@@ -360,13 +360,22 @@ class APIServer:
                 # of this subprocess
                 host_pid = self.mnsec[host].pid
                 homeDir = self.mnsec.setupHostHomeDir(host)
-                myenv = {"PS1": f"\\u@{host}:\\W\\$ ", "HOME": homeDir}
+                myenv = dict(os.environ)
+                myenv.update({"PS1": f"\\u@{host}:\\W\\$ ", "HOME": homeDir})
                 # workaround to avoid bash overridding PS1
                 myenv["SUDO_USER"] = "root"
                 myenv["SUDO_PS1"] = "# "
-                subprocess.run(['mnexec', '-a', str(host_pid), "bash"], env=myenv, cwd=homeDir)
+                #subprocess.run(['mnexec', '-a', str(host_pid), "bash"], env=myenv, cwd=homeDir)
+                with self.mnsec[host].popen(
+                    "bash", env=myenv, cwd=homeDir, stdout=None, stderr=None,
+                ) as process:
+                    try:
+                        stdout, stderr = process.communicate()
+                    except:
+                        process.kill()
                 # after finish make sure we cleanup
                 self.xterm_conns.pop(host, None)
+                # TODO: trigger a disconnect socketio event! (even if it is possible to close the tab, we shouldnt do that to avoid loosing data on the section)
             else:
                 # this is the parent process fork.
                 # store child fd and pid
@@ -390,7 +399,7 @@ class APIServer:
             """client disconnected."""
             host = flask.request.args.get("host") 
             if not host or host not in self.xterm_conns:
-                warning(f"Host not connected host={host}\n")
+                #warning(f"Host not connected host={host}\n")
                 return False
             (_, pid) = self.xterm_conns[host]
             try:

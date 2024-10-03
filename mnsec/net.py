@@ -28,6 +28,8 @@ import mnsec.apps.all
 from mnsec.apps.app_manager import AppManager
 from mnsec.nodelib import IPTablesFirewall, Host
 from mnsec.api_server import APIServer
+from mnsec.k8s import K8sPod
+from mnsec.link import VxLanLink
 
 
 VERSION = "0.1.0"
@@ -68,12 +70,16 @@ class Mininet_sec(Mininet):
             self.api_server = None
 
         kwargs.setdefault("host", Host)
+        # ipBase: using /24 instead of /8 to reduce chances of conflict
+        kwargs.setdefault("ipBase", "10.0.0.0/24")
         Mininet.__init__(self, **kwargs)
 
     def start(self):
         """Start nodes, apps and call Mininet to finish the startup."""
         for host in self.hosts:
             self.startHost(host)
+            for app in host.params.get("apps", []):
+                AppManager(self, [host], app["name"], **app)
 
         # start apps
         for app_str in self.apps.split(","):
@@ -176,6 +182,9 @@ class Mininet_sec(Mininet):
                 newPort += 1
             if "port2" not in params or params["port2"] == params["port1"]:
                 params["port2"] = newPort
+
+        if isinstance(node1, K8sPod) or isinstance(node2, K8sPod):
+            params["cls"] = VxLanLink
 
         link = Mininet.addLink(self, node1, node2, **params)
 
