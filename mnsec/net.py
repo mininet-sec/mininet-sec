@@ -10,6 +10,8 @@
 import re
 import socket
 import sys
+from collections import defaultdict
+import networkx as nx
 
 from itertools import chain, groupby
 from threading import Thread as thread
@@ -198,6 +200,45 @@ class Mininet_sec(Mininet):
             link.intf2.setIP(ipv6_node2)
 
         return link
+
+    def routingHelper(self):
+        networks = {}
+        g = nx.Graph()
+
+        for host in self.hosts:
+            mynetworks = getattr(host, "params", {}).get("mynetworks")
+            if mynetworks is None:
+                continue
+            networks[host.name] = mynetworks 
+            g.add_node(host.name)
+
+        for link in net.links:
+            if (
+                link.intf1.node == link.intf2.node or
+                link.intf1.node.name not in g.nodes() or
+                link.intf2.node.name not in g.nodes()
+            ):
+                continue
+            n1 = link.intf1.node.name
+            n2 = link.intf2.node.name
+            g.add_edge(n1, n2, net={n1: link.intf1.ip, n2: link.intf2.ip})
+
+        known_routes = defaultdict(list)
+        for node1 in g.nodes():
+            for node2 in g.nodes():
+                if node1 == node2:
+                    continue
+                for path in nx.all_shortest_paths(g, source=node1, target=node2):
+                    prev_hop = path[0]
+                    for hop in path[1:]:
+                        hop_net = g.get_edge_data(prev_hop, hop)["net"]
+                        for net in networks[node1]:
+                            route = f"{net} via {hop_net[prev_hop]}"
+                            if route in known_routes[hop]:
+                                 continue
+                            self[hop].cmd(f"ip route add {route}")
+                            known_routes[hop].append(route)
+                        prev_hop = hop
 
     def run_cli(self, cmd):
         """Run on CLI if available."""
