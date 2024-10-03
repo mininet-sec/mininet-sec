@@ -361,7 +361,7 @@ class APIServer:
                 host_pid = self.mnsec[host].pid
                 homeDir = self.mnsec.setupHostHomeDir(host)
                 myenv = dict(os.environ)
-                myenv.update({"PS1": f"\\u@{host}:\\W\\$ ", "HOME": homeDir})
+                myenv.update({"PS1": f"\\u@{host}:\\W\\$ ", "HOME": homeDir, "TERM": "xterm"})
                 # workaround to avoid bash overridding PS1
                 myenv["SUDO_USER"] = "root"
                 myenv["SUDO_PS1"] = "# "
