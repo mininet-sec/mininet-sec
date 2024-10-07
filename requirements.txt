@@ -1,4 +1,4 @@
-honeypots
+honeypots@git+https://github.com/italovalcy/honeypots@main#egg=honeypots
 werkzeug<3.0.0
 requests==2.28.2
 setuptools==69.2.0
