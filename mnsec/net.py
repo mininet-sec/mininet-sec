@@ -228,7 +228,12 @@ class Mininet_sec(Mininet):
             for node2 in g.nodes():
                 if node1 == node2:
                     continue
-                for path in nx.all_shortest_paths(g, source=node1, target=node2):
+                try:
+                    paths = list(nx.all_shortest_paths(g, source=node1, target=node2))
+                except:
+                    warn(f"\nFailed to find a path from {node1} to {node2}")
+                    continue
+                for path in paths:
                     prev_hop = path[0]
                     for hop in path[1:]:
                         hop_net = g.get_edge_data(prev_hop, hop)["net"]
