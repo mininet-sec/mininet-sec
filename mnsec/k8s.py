@@ -4,6 +4,7 @@ import time
 import os
 import sys
 import json
+from uuid import uuid4
 
 from mininet.log import info, error, warn, debug
 from mininet.node import Node
@@ -34,7 +35,7 @@ class K8sPod(Node):
         env: environment variables for the container. Example:
             env=[{"name": "XPTO", "value": "foobar"}]
         """
-        self.k8s_name = f"mnsec-{name}"
+        self.k8s_name = f"mnsec-{name}-{uuid4().hex[:14]}"
         self.k8s_image = image
         self.k8s_command = command
         self.k8s_pod_ip = None
