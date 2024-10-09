@@ -142,8 +142,7 @@ class NetworkTopo( Topo ):
         self.addLink(s301, srv301)
         self.addLink(s301, fw301, ipv4_node2="192.168.30.254/24")
         self.addLink(s301, fw301, ipv4_node2="172.16.30.254/24")
-        self.addLink(s301, fw301, ipv4_node2="10.30.0.254/24")
-        self.addLink(s301, r301)
+        self.addLink(r301, fw301, ipv4_node2="10.30.0.254/24")
 
         ####################
         ## AS 400
