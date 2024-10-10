@@ -82,7 +82,7 @@ class NetworkTopo( Topo ):
 
         srv201 = self.addHost('srv201', ip='172.16.20.1/24', defaultRoute='via 172.16.20.254')
 
-        secflood1 = self.addHost('secflood1', cls=K8sPod)
+        secflood1 = self.addHost('secflood1', cls=K8sPod, image="hackinsdn/secflood:latest", command=["/docker-entrypoint.sh"])
 
         rules_v4_as200 = {
             "filter": [
