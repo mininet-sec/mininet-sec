@@ -275,7 +275,7 @@ class K8sPod(Node):
             mnsec_tag.parent.mkdir(parents=True, exist_ok=True)
             mnsec_tag.write_text(cls.tag)
         
-        cls.node_affinity = os.environ.get("MNSEC_NODE_AFFINITY", "").split(",")
+        cls.node_affinity = os.environ.get("K8S_NODE_AFFINITY", "").split(",")
 
         cls.initialized = True
 
