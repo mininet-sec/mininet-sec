@@ -76,12 +76,12 @@ class VxLanLink(Link):
 
         cmdOut1 = runCmd1(
             f"ip link add {intfname1} netns {netns1} {l2addr1} "
-            f"type vxlan id {vxlan_id} remote {node2_ip} dstport 8472",
+            f"type vxlan id {vxlan_id} remote {node2_ip} dstport 8472 nolearning",
             shell=True,
         )
         cmdOut2 = runCmd2(
             f"ip link add {intfname2} netns {netns2} {l2addr2} "
-            f"type vxlan id {vxlan_id} remote {node1_ip} dstport 8472",
+            f"type vxlan id {vxlan_id} remote {node1_ip} dstport 8472 nolearning",
             shell=True,
         )
 
