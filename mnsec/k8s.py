@@ -233,6 +233,18 @@ class K8sPod(Node):
             kwargs["env"]["KUBECONFIG"] = f"{os.path.expanduser('~')}/.kube/config"
         return Node.popen(self, *args, **kwargs)
 
+    def setRoutes(self, routes):
+        """Additional routes to be added."""
+        for net, gw in routes:
+            self.cmd(f"ip route add {net} via {gw}")
+
+    def config( self, routes=[], **params ):
+        """routes: list of tuples with addional routes to be added
+           params: parameters for Node.config()"""
+        r = Node.config( self, **params )
+        self.setParam( r, 'setRoutes', routes=routes )
+        return r
+
     @classmethod
     def setup(cls):
         "Make sure kubectl is installed and working"
