@@ -233,7 +233,7 @@ class K8sPod(Node):
             kwargs["env"]["KUBECONFIG"] = f"{os.path.expanduser('~')}/.kube/config"
         return Node.popen(self, *args, **kwargs)
 
-    def setRoutes(self, routes):
+    def setRoutes(self, routes=[]):
         """Additional routes to be added."""
         for net, gw in routes:
             self.cmd(f"ip route add {net} via {gw}")
