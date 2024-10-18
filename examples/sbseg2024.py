@@ -78,11 +78,11 @@ class NetworkTopo( Topo ):
 
         h201 = self.addHost('h201', ip='192.168.20.1/24', defaultRoute='via 192.168.20.254')
 
-        ids201 = self.addHost('ids201', cls=K8sPod, image="hackinsdn/suricata:latest", command=["/docker-entrypoint.sh"], env=[{"name": "SURICATA_IFACE", "value": "h2-eth0"}, {"name": "SURICATA_HOME_NET", "value": "192.168.20.0/24,172.16.20.0/24"}, {"name": "KYTOS_URL", "value": "http://10.50.124.149:8181"}, {"name": "BLOCKING_DURATION", "value": "300"}])
+        ids201 = self.addHost('ids201', cls=K8sPod, image="hackinsdn/suricata:latest", env=[{"name": "SURICATA_IFACE", "value": "h2-eth0"}, {"name": "SURICATA_HOME_NET", "value": "192.168.20.0/24,172.16.20.0/24"}, {"name": "KYTOS_URL", "value": "http://10.50.124.149:8181"}, {"name": "BLOCKING_DURATION", "value": "300"}])
 
         srv201 = self.addHost('srv201', ip='172.16.20.1/24', defaultRoute='via 172.16.20.254')
 
-        secflood1 = self.addHost('secflood1', cls=K8sPod, image="hackinsdn/secflood:latest", command=["/docker-entrypoint.sh"])
+        secflood1 = self.addHost('secflood1', ip="", cls=K8sPod, image="hackinsdn/secflood:latest", env=[{"name": "SECFLOOD_INTF_INSIDE", "value": "secflood1-eth0"}, {"name": "SECFLOOD_GW_INSIDE", "value": "192.168.20.254"}, {"name": "SECFLOOD_INTF_OUTSIDE", "value": "secflood1-eth1"}])
 
         rules_v4_as200 = {
             "filter": [
