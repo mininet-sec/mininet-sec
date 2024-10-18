@@ -322,6 +322,9 @@ class MininetRunner( object ):
                          help='Specify the sflow polling interval' )
         opts.add_option( '--disable_api', action='store_false', default=True,
                          help='disable API server and topology view' )
+        opts.add_option( '--k8s_node_affinity', type='string', default='',
+                         metavar='node1,k8s-node2,server3',
+                         help=('Comma-separated list of nodes where pods should be created (K8s nodeAffinity)') )
 
         self.options, self.args = opts.parse_args()
 
@@ -414,6 +417,9 @@ class MininetRunner( object ):
         if ( opts.test and opts.test != [ 'none' ] and
              isinstance( opts.wait, bool ) ):
             opts.wait = True
+
+        if opts.k8s_node_affinity:
+            K8sPod.setup_node_affinity(opts.k8s_node_affinity)
 
         mn = Net( topo=topo,
                   switch=switch, host=host, controller=controller, link=link,

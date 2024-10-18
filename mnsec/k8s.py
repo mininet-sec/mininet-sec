@@ -5,12 +5,15 @@ import os
 import sys
 import json
 from uuid import uuid4
+from pathlib import Path
 
 from mininet.log import info, error, warn, debug
 from mininet.node import Node
 from mininet.moduledeps import pathCheck
 from mininet.util import quietRun, errRun
 from mininet.clean import addCleanupCallback
+
+from mnsec.portforward import portforward
 
 
 KUBECTL=None
@@ -19,13 +22,17 @@ KUBECTL=None
 class K8sPod(Node):
     "A Node running on Kubernetes as a Pod."
     initialized = False
+    tag = None
+    node_affinity = []
 
     def __init__(
         self,
         name,
-        image="hackinsdn/debian:stable",
-        command=["/bin/bash", "-c", "tail -f /dev/null"],
+        image="hackinsdn/debian:latest",
+        command=[],
+        args=[],
         env=[],
+        publish=[],
         waitRunning=False,
         **params,
     ):
@@ -34,26 +41,61 @@ class K8sPod(Node):
             wait indefinitely; Int: time to  wait (sec)
         env: environment variables for the container. Example:
             env=[{"name": "XPTO", "value": "foobar"}]
+        command: command to be executed as the container entrypoint. Example:
+            command=["/bin/bash"]
+        args: To define arguments for the command. Note: The command field
+            corresponds to ENTRYPOINT, and the args field corresponds to CMD
+            in some container runtimes. Example:
+            args=["-c", "tail -f /dev/null"]
+        publish: Publish or expose a port (tcp, udp, tcp6, udp6, etc). Syntax:
+            [bind_addr]:local_port:remote_prot[/protocol]. Multiple ports can
+            be published/exposed. This option requires waitRunning. Example:
+            publish=['8080:80', '127.0.0.1:5353:53/udp', ...]
+
         """
-        self.k8s_name = f"mnsec-{name}-{uuid4().hex[:14]}"
+        if self.tag is None:
+            self.tag = uuid4().hex[:14]
+        self.k8s_name = f"mnsec-{name}-{self.tag}"
         self.k8s_image = image
         self.k8s_command = command
+        self.k8s_args = args
         self.k8s_pod_ip = None
         self.k8s_env = env
+        self.k8s_publish = self.parse_publish(publish)
+        self.port_forward = []
         self.waitRunning = waitRunning
+        if self.k8s_publish and not self.waitRunning:
+            self.waitRunning = True
         Node.__init__(self, name, **params)
+
+    def parse_publish(self, publish_orig):
+        """Parse publish: from list of string to list of dict."""
+        publish = []
+        for publish_str in publish_orig:
+            params = publish_str.split(":")
+            if len(params) < 2:
+                raise ValueError(f"Invalid publish params {publish_str}")
+            port2 = params.pop(-1)
+            proto = "tcp"
+            if "/" in port2:
+                port2, proto = port2.split("/")
+            port1 = params.pop(-1)
+            host1 = "0.0.0.0"
+            if params:
+                host1 = ":".join(params)
+            publish.append({"host1": host1, "port1": port1, "port2": port2, "proto": proto})
+        return publish
 
     def startShell(self, **moreParams):
         """Create the Pod (run)."""
         self.params.update(moreParams)
 
-        pod_manifest = json.dumps(
-            {
+        pod_manifest = {
                 "apiVersion": "v1",
                 "kind": "Pod",
                 "metadata": {
                     "name": self.k8s_name,
-                    "labels": {"app": "mnsec"},
+                    "labels": {"app": f"mnsec-{self.tag}"},
                     "annotations": {
                         "container.apparmor.security.beta.kubernetes.io/"
                         + self.k8s_name: "unconfined",
@@ -65,7 +107,6 @@ class K8sPod(Node):
                             "image": self.k8s_image,
                             "imagePullPolicy": "Always",
                             "name": self.k8s_name,
-                            "command": self.k8s_command,
                             "env": self.k8s_env,
                             "securityContext": {
                                 "capabilities": {
@@ -75,10 +116,32 @@ class K8sPod(Node):
                         }
                     ],
                 },
+        }
+        if self.k8s_command:
+            pod_manifest["spec"]["containers"][0]["command"] = self.k8s_command
+        if self.k8s_args:
+            pod_manifest["spec"]["containers"][0]["args"] = self.k8s_command
+        if self.node_affinity:
+            pod_manifest["spec"]["affinity"] = {
+                "nodeAffinity": {
+                    "requiredDuringSchedulingIgnoredDuringExecution": {
+                        "nodeSelectorTerms": [
+                            {
+                                "matchExpressions": [
+                                    {
+                                        "key": "kubernetes.io/hostname",
+                                        "operator": "In",
+                                        "values": self.node_affinity,
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                },
             }
-        )
+        pod_manifest_str = json.dumps(pod_manifest)
         out, err, exitcode = errRun(
-            f"echo '{pod_manifest}' | {KUBECTL} create -f -", shell=True
+            f"echo '{pod_manifest_str}' | {KUBECTL} create -f -", shell=True
         )
         if exitcode:
             raise Exception(
@@ -87,7 +150,10 @@ class K8sPod(Node):
         if self.waitRunning:
             if isinstance(self.waitRunning, bool):
                 self.waitRunning = float("inf")
-            self.wait_running(max_wait=self.waitRunning)
+            self.wait_running(wait=self.waitRunning)
+
+        # setup port forward
+        self.setup_port_forward()
 
     def wait_running(self, wait=float("inf"), step=3):
         """Wait for Pod to be Running and get its IP address."""
@@ -105,6 +171,24 @@ class K8sPod(Node):
             time.sleep(step)
             wait -= step
 
+    def setup_port_forward(self):
+        """Create port forward for the pod."""
+        for kwargs in self.k8s_publish:
+            try:
+                p = portforward(host2=self.k8s_pod_ip, **kwargs)
+            except Exception as exc:
+                error(f"\n[ERROR] Failed to create port forward: host2={self.k8s_pod_ip} kwargs={kwargs} -- {exc}")
+                continue
+            kwargs["portforward"] = p
+
+    def delete_port_forward(self):
+        """Delete port forward."""
+        for kwargs in self.k8s_publish:
+            p = kwargs.get("portforward")
+            if not p:
+                continue
+            p.kill()
+
     def delete_pod(self):
         info("(waiting on Kubernetes...) ")
         out, err, exitcode = errRun(f"{KUBECTL} delete pod {self.k8s_name} --wait=true")
@@ -114,6 +198,7 @@ class K8sPod(Node):
     def terminate(self):
         """Stop the Pod."""
         self.delete_pod()
+        self.delete_port_forward()
 
     def stop(self):
         """Stop the Pod."""
@@ -141,11 +226,12 @@ class K8sPod(Node):
 
     def popen(self, *args, **kwargs):
         """Return a Popen() object from kubectl exec."""
-        defaults = {"mncmd": [KUBECTL, "exec", "-it", self.k8s_name, "--"]}
-        defaults.update(kwargs)
-        if isinstance(defaults.get("env"), dict):
-            defaults["env"]["KUBECONFIG"] = f"{os.path.expanduser('~')}/.kube/config"
-        return Node.popen(self, *args, **defaults)
+        kwargs["mncmd"] = [KUBECTL, "exec", "-it", self.k8s_name, "--"]
+        kwargs["cwd"] = "/"
+        # once we overwrite the HOME, we have to explicitly set KUBECONFIG
+        if isinstance(kwargs.get("env"), dict):
+            kwargs["env"]["KUBECONFIG"] = f"{os.path.expanduser('~')}/.kube/config"
+        return Node.popen(self, *args, **kwargs)
 
     @classmethod
     def setup(cls):
@@ -166,7 +252,19 @@ class K8sPod(Node):
         """Initialize the class and add cleanup callback."""
         if cls.initialized:
             return
+
         addCleanupCallback(cls.cleanup)
+        
+        mnsec_tag = Path("/var/run/secrets/mnsec/tag")
+        try:
+            cls.tag = mnsec_tag.read_text()
+        except FileNotFoundError:
+            cls.tag = uuid4().hex[:14]
+            mnsec_tag.parent.mkdir(parents=True, exist_ok=True)
+            mnsec_tag.write_text(cls.tag)
+        
+        cls.node_affinity = os.environ.get("MNSEC_NODE_AFFINITY", "").split(",")
+
         cls.initialized = True
 
     @classmethod
@@ -174,13 +272,22 @@ class K8sPod(Node):
         """Clean up"""
         info("*** Cleaning up Kubernetes Pods\n")
         pods = quietRun(
-            f"{KUBECTL} get pods --selector app=mnsec -o custom-columns=NAME:.metadata.name --no-headers=true"
+            f"{KUBECTL} get pods --selector app=mnsec-{cls.tag} -o custom-columns=NAME:.metadata.name --no-headers=true"
         )
         if not pods:
             return
         pods = " ".join(pods.split())
         info(f"{pods} (Please wait a few seconds)...\n")
         quietRun(f"{KUBECTL} delete pods --wait=true {pods}")
+
+    @classmethod
+    def setup_node_affinity(cls, nodes):
+        if isinstance(nodes, list):
+            cls.node_affinity = nodes
+        elif isinstance(nodes, str):
+            cls.node_affinity = nodes.split(",")
+        else:
+            raise ValueError("Invalid data type for node affinity, must be string or list of strings")
 
 
 KUBECTL = quietRun("which kubectl").strip()

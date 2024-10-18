@@ -1,6 +1,7 @@
 import json
 import flask
 import threading
+import textwrap
 from flask_socketio import SocketIO, disconnect
 #from werkzeug.serving import make_server
 from dash import Dash, html, dcc, Input, Output, State, callback, clientside_callback, get_asset_url
@@ -44,7 +45,8 @@ class APIServer:
         for host in self.mnsec.hosts:
             elements.append({"data": {"id": host.name, "label": host.name, "type": "host"}, "classes": "rectangle"})
         for switch in self.mnsec.switches:
-            elements.append({"data": {"id": switch.name, "label": switch.name, "type": "switch"}})
+            dpid = ":".join(textwrap.wrap(getattr(switch, "dpid", "0000000000000000"), 2))
+            elements.append({"data": {"id": switch.name, "label": switch.name, "type": "switch", "dpid": dpid}})
         for link in self.mnsec.links:
             elements.append({"data": {"source": link.intf1.node.name, "target": link.intf2.node.name, "slabel": link.intf1.name, "tlabel": link.intf2.name}})
 
@@ -365,9 +367,9 @@ class APIServer:
                 # workaround to avoid bash overridding PS1
                 myenv["SUDO_USER"] = "root"
                 myenv["SUDO_PS1"] = "# "
-                #subprocess.run(['mnexec', '-a', str(host_pid), "bash"], env=myenv, cwd=homeDir)
+                mncmd = ['mnexec', '-a', str(host_pid)]
                 with self.mnsec[host].popen(
-                    "bash", env=myenv, cwd=homeDir, stdout=None, stderr=None,
+                    "bash", env=myenv, cwd=homeDir, mncmd=mncmd, stdout=None, stderr=None,
                 ) as process:
                     try:
                         stdout, stderr = process.communicate()

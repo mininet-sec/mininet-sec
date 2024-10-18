@@ -85,7 +85,7 @@ class HoneypotFactory(Application):
 
     def stop(self):
         #self.node.cmd(f"kill {self.pid}")
-        self.node.cmd(f"pkill -f 'python3 .*/honeypots/{self.name}_server.py --custom'")
+        self.node.cmd(f"pkill -f 'python3 .*honeypots.*{self.name}'")
 
 
 for name in SERVICES:
