@@ -82,7 +82,7 @@ class NetworkTopo( Topo ):
 
         srv201 = self.addHost('srv201', ip='172.16.20.1/24', defaultRoute='via 172.16.20.254')
 
-        secflood1 = self.addHost('secflood1', ip="", cls=K8sPod, image="hackinsdn/secflood:latest", env=[{"name": "SECFLOOD_INTF_INSIDE", "value": "secflood1-eth0"}, {"name": "SECFLOOD_GW_INSIDE", "value": "192.168.20.254"}, {"name": "SECFLOOD_INTF_OUTSIDE", "value": "secflood1-eth1"}])
+        secflood1 = self.addHost('secflood1', ip="", publish=["8443:443"], cls=K8sPod, image="hackinsdn/secflood:latest", env=[{"name": "SECFLOOD_INTF_INSIDE", "value": "secflood1-eth0"}, {"name": "SECFLOOD_GW_INSIDE", "value": "192.168.20.254"}, {"name": "SECFLOOD_INTF_OUTSIDE", "value": "secflood1-eth1"}])
 
         rules_v4_as200 = {
             "filter": [
