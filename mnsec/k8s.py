@@ -242,7 +242,7 @@ class K8sPod(Node):
         """routes: list of tuples with addional routes to be added
            params: parameters for Node.config()"""
         r = Node.config( self, **params )
-        self.setParam( r, 'setRoutes', routes=routes )
+        self.setRoutes(routes)
         return r
 
     @classmethod
