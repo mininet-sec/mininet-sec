@@ -21,7 +21,7 @@ from mininet.log import setLogLevel, info
 from mininet.util import run
 
 def resolve_name(name):
-    for _ range(60):
+    for _ in range(60):
         try:
             return socket.gethostbyname(name)
         except:
