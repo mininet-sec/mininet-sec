@@ -26,11 +26,13 @@ launch() {
   # If first argument looks like an argument then execute mininet with all the
   # arguments
   elif [[ $1 =~ ^- ]]; then
-    exec mnsec $@
+    tmux new-sess -d -s mnsec mnsec $@
+    sleep infinity
 
-  # Unknown argument
+  # Defaults to leave it running with any possible argument in a tmux session
   else
-    usage
+    tmux new-sess -d -s mnsec $@
+    sleep infinity
   fi
 }
 
