@@ -275,7 +275,7 @@ class K8sPod(Node):
             mnsec_tag.parent.mkdir(parents=True, exist_ok=True)
             mnsec_tag.write_text(cls.tag)
         
-        cls.node_affinity = os.environ.get("K8S_NODE_AFFINITY", "").split(",")
+        cls.setup_node_affinity(os.environ.get("K8S_NODE_AFFINITY"))
 
         cls.initialized = True
 
@@ -294,6 +294,8 @@ class K8sPod(Node):
 
     @classmethod
     def setup_node_affinity(cls, nodes):
+        if not nodes:
+            return
         if isinstance(nodes, list):
             cls.node_affinity = nodes
         elif isinstance(nodes, str):
