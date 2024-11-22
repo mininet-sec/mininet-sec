@@ -5,6 +5,8 @@ multi_as.py: Scenario with multiple ASNs, firewall, host, NetTAP, SDN switches
 """
 
 import sys
+import socket
+import time
 from mnsec.topo import Topo
 from mnsec.net import Mininet_sec
 from mnsec.cli import CLI
@@ -17,6 +19,14 @@ from mininet.nodelib import LinuxBridge
 from mininet.link import TCLink
 from mininet.log import setLogLevel, info
 from mininet.util import run
+
+def resolve_name(name):
+    for _ range(60):
+        try:
+            return socket.gethostbyname(name)
+        except:
+            time.sleep(2)
+    raise TimeoutError(f"timeout while waiting for IP address of '{name}'")
 
 class NetworkTopo( Topo ):
     """The topology definition."""
