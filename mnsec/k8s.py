@@ -271,7 +271,7 @@ class K8sPod(Node):
         try:
             cls.tag = mnsec_tag.read_text()
         except FileNotFoundError:
-            cls.tag = uuid4().hex[:14]
+            cls.tag = os.environ.get("K8S_POD_HASH") or uuid4().hex[:14]
             mnsec_tag.parent.mkdir(parents=True, exist_ok=True)
             mnsec_tag.write_text(cls.tag)
         
