@@ -200,7 +200,7 @@ if __name__ == '__main__':
     info( 'Starting Mininet-Sec\n' )
     net = Mininet_sec(
         topo=NetworkTopo(),
-        controller=lambda name: RemoteController(name, ip=sys.argv[1], port=6653),
+        controller=lambda name: RemoteController(name, ip=resolve_name(sys.argv[1]), port=6653),
     )
     net.start()
 
