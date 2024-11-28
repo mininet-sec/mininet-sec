@@ -4,7 +4,7 @@ import threading
 import textwrap
 from flask_socketio import SocketIO, disconnect
 #from werkzeug.serving import make_server
-from dash import Dash, html, dcc, Input, Output, State, callback, clientside_callback, get_asset_url
+from dash import Dash, html, dcc, Input, Output, State, callback, clientside_callback, get_asset_url, no_update
 import dash_cytoscape as cyto
 from mininet.log import info, warning
 
@@ -33,12 +33,41 @@ class APIServer:
 
         self.server = flask.Flask(__name__)
         self.app = Dash(__name__, server=self.server)
+        self.app.title = "Mininet-Sec"
         #self.server = make_server(listen, port, self.app.server, threaded=True, processes=0)
         self.socketio = SocketIO(self.server)
         self.server_task = None
 
         # xterm connections
         self.xterm_conns = {}
+
+        self.topology_loaded = False
+
+        # loading layout
+        self.app.layout = html.Div([
+            dcc.Location(id='url'),
+            dcc.Interval(id='interval-loading', interval=2000),
+            html.Img(src=get_asset_url('mininet-sec.png')),
+            html.H3("Wait while loading the topology..."),
+            dcc.Loading(id="loading-1", display='show'),
+        ])
+
+        @callback(
+            Output("url", 'href'),
+            Output("interval-loading", "disabled"),
+            Input("interval-loading", "n_intervals"),
+            prevent_initial_call=True,
+        )
+        def interval_update(n):
+            if self.topology_loaded:
+                return "/", True
+            else:
+                return no_update
+
+        self.server.add_url_rule("/topology", None, self.get_topology, methods=["GET"])
+        self.server.add_url_rule("/add_node", None, self.add_node, methods=["POST"])
+        self.server.add_url_rule("/add_link", None, self.add_link, methods=["POST"])
+        self.server.add_url_rule("/xterm/<host>", None, self.xterm, methods=["GET"])
 
     def setup(self):
         elements = []
@@ -150,6 +179,8 @@ class APIServer:
         ]
 
         self.app.layout = html.Div([
+            dcc.Location(id='url'),
+            dcc.Interval(id='interval-loading', interval=2000, disabled=True),
             html.Div(
                 className="eight columns",
                 id="topology",
@@ -431,12 +462,8 @@ class APIServer:
                     break
                 self.socketio.emit(f"pty-output-{host}", {"output": output}, namespace="/pty")
 
+        self.topology_loaded = True
 
-
-        self.server.add_url_rule("/topology", None, self.get_topology, methods=["GET"])
-        self.server.add_url_rule("/add_node", None, self.add_node, methods=["POST"])
-        self.server.add_url_rule("/add_link", None, self.add_link, methods=["POST"])
-        self.server.add_url_rule("/xterm/<host>", None, self.xterm, methods=["GET"])
 
     def get_topology(self):
         topo = {'nodes':[], 'links':[]}

@@ -68,6 +68,7 @@ class Mininet_sec(Mininet):
 
         if self.run_api_server:
             self.api_server = APIServer(self)
+            self.api_server.start()
         else:
             self.api_server = None
 
@@ -101,7 +102,6 @@ class Mininet_sec(Mininet):
 
         if self.run_api_server:
             self.api_server.setup()
-            self.api_server.start()
 
     def setupHostHomeDir(self, host):
         """Setup host home dir."""
