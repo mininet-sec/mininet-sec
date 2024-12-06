@@ -254,6 +254,15 @@ class K8sPod(Node):
                 error(f"\n[ERROR] Failed to create port forward: host2={self.k8s_pod_ip} kwargs={kwargs} -- {exc}")
                 continue
             kwargs["portforward"] = p
+            # Since the services will not run on mgmt interface anymore
+            # we need to create a proxy on the Pod to expose the service there
+            # using socat (if available)
+            port2 = kwargs.get("port2")
+            proto = kwargs.get("proto", "tcp")
+            if not port2:
+                continue
+            self.cmd(f"socat -lpmnsec-socat-unix-local-{port2}-{proto} unix-listen:/tmp/local-{port2}-{proto}.sock,fork {proto}:127.0.0.1:{port2} &")
+            self.cmd(f"ip netns exec mgmt socat -lpmnsec-socat-local-{port2}-{proto}-unix {proto}-listen:{port2}:bind=0.0.0.0,reuseaddr,fork unix-connect:/tmp/local-{port2}-{proto}.sock &")
 
     def delete_port_forward(self):
         """Delete port forward."""
@@ -367,10 +376,9 @@ class K8sPod(Node):
             quietRun(f"{KUBECTL} config use-context {proxy_ns}_default@mnsecproxy")
 
         # test kubernetes access
-        result = quietRun(f"{KUBECTL} kubectl auth can-i create pods")
+        result = quietRun(f"{KUBECTL} auth can-i create pods")
         if "yes" not in result:
-            error("\nERROR initializing Kubernetes...")
-            return
+            raise ValueError("Failed to initialize kubernetes")
 
         cls.pod_name, cls.pod_uid = parse_token(pod_token)
 

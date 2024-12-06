@@ -13,7 +13,7 @@ def portforward(port1=None, host2=None, port2=None, proto="tcp", host1="0.0.0.0"
                '%s-listen:%s,bind=%s,reuseaddr,fork' % (proto, port1, host1),
                '%s:%s:%s' % (proto2, host2, port2)]
     kwargs = {'stdin': subprocess.DEVNULL, 'stdout': subprocess.DEVNULL,
-              'stderr': subprocess.DEVNULL}
+              'stderr': subprocess.PIPE}
     proc = subprocess.Popen(command, **kwargs)
 
     with contextlib.suppress(subprocess.TimeoutExpired):
