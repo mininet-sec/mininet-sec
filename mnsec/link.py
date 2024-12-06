@@ -62,6 +62,8 @@ class VxLanLink(Link):
         runCmd2 = node2.cmd if isinstance(node2, K8sPod) else quietRun
         netns1 = 1 if isinstance(node1, K8sPod) else node1.pid
         netns2 = 1 if isinstance(node2, K8sPod) else node2.pid
+        cmd1Pfx = "ip netns exec mgmt" if isinstance(node1, K8sPod) else ""
+        cmd2Pfx = "ip netns exec mgmt" if isinstance(node2, K8sPod) else ""
 
         if deleteIntfs:
             # Delete any old interfaces with the same names
@@ -75,14 +77,16 @@ class VxLanLink(Link):
         cls.vxlan_next_id += 1
 
         cmdOut1 = runCmd1(
-            f"ip link add {intfname1} netns {netns1} {l2addr1} "
+            f"{cmd1Pfx} ip link add {intfname1} netns {netns1} {l2addr1} "
             f"type vxlan id {vxlan_id} remote {node2_ip} dstport 8472 nolearning",
             shell=True,
+            k8s_mgmt=True,
         )
         cmdOut2 = runCmd2(
-            f"ip link add {intfname2} netns {netns2} {l2addr2} "
+            f"{cmd2Pfx} ip link add {intfname2} netns {netns2} {l2addr2} "
             f"type vxlan id {vxlan_id} remote {node1_ip} dstport 8472 nolearning",
             shell=True,
+            k8s_mgmt=True,
         )
 
         if cmdOut1 or cmdOut2:

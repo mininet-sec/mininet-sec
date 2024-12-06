@@ -4,8 +4,13 @@ import time
 import os
 import sys
 import json
+import pty
+import select
+import signal
 from uuid import uuid4
 from pathlib import Path
+from subprocess import Popen
+import jwt
 
 from mininet.log import info, error, warn, debug
 from mininet.node import Node
@@ -16,13 +21,26 @@ from mininet.clean import addCleanupCallback
 from mnsec.portforward import portforward
 
 
-KUBECTL=None
+KUBECTL = None
+K8S_TOKEN_FILE = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+K8S_NAMESPACE_FILE = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
+K8S_CERT_FILE = "/var/run/secrets/mnsec/proxy.crt"
+
+
+def parse_token(token):
+    try:
+        data = jwt.decode(token, options={"verify_signature": False})
+        return data['kubernetes.io']['pod']['name'], data['kubernetes.io']['pod']['uid']
+    except:
+        return None, None
 
 
 class K8sPod(Node):
     "A Node running on Kubernetes as a Pod."
     initialized = False
     tag = None
+    pod_name = None
+    pod_uid = None
     node_affinity = []
 
     def __init__(
@@ -110,7 +128,7 @@ class K8sPod(Node):
                             "env": self.k8s_env,
                             "securityContext": {
                                 "capabilities": {
-                                    "add": ["NET_ADMIN"],
+                                    "add": ["NET_ADMIN", "SYS_ADMIN"],
                                 },
                             },
                         }
@@ -139,6 +157,13 @@ class K8sPod(Node):
                     },
                 },
             }
+        if self.pod_name and self.pod_uid:
+            pod_manifest["metadata"]["ownerReferences"] = [{
+                "name": self.pod_name,
+                "uid": self.pod_uid,
+                "apiVersion": "v1",
+                "kind": "Pod",
+            }]
         pod_manifest_str = json.dumps(pod_manifest)
         out, err, exitcode = errRun(
             f"echo '{pod_manifest_str}' | {KUBECTL} create -f -", shell=True
@@ -147,15 +172,19 @@ class K8sPod(Node):
             raise Exception(
                 f"Failed to create Kubernetes Pod: exit={exitcode} out={out} err={err}"
             )
-        if self.waitRunning:
-            if isinstance(self.waitRunning, bool):
-                self.waitRunning = float("inf")
-            self.wait_running(wait=self.waitRunning)
 
+    def post_startup(self):
+        """Run steps after Kubernetes has created the Pod (and all other pods)"""
+        # wait until make sure pod is Running
+        self.wait_running()
+        # setup shell
+        self.setup_shell()
+        # change control network to mgmt namespace
+        self.setup_mgmt_namespace()
         # setup port forward
         self.setup_port_forward()
 
-    def wait_running(self, wait=float("inf"), step=3):
+    def wait_running(self, wait=float("inf"), step=2):
         """Wait for Pod to be Running and get its IP address."""
         while wait > 0:
             try:
@@ -170,6 +199,51 @@ class K8sPod(Node):
                 pass
             time.sleep(step)
             wait -= step
+
+    def setup_shell(self):
+        cmd = [
+            "mnexec", "-cd", KUBECTL, "exec", "-it", self.k8s_name, "--",
+            "env", 'PS1=' + chr( 127 ), "bash", "--norc", "--noediting", "-is", "mininet:" + self.name
+        ]
+        self.master, self.slave = pty.openpty()
+        self.shell = Popen( cmd, stdin=self.slave, stdout=self.slave, stderr=self.slave, close_fds=False )
+        self.stdin = os.fdopen( self.master, 'r' )
+        self.stdout = self.stdin
+        self.pid = self.shell.pid
+        self.pollOut = select.poll()
+        self.pollOut.register( self.stdout )
+        # Maintain mapping between file descriptors and nodes
+        # This is useful for monitoring multiple nodes
+        # using select.poll()
+        self.outToNode[ self.stdout.fileno() ] = self
+        self.inToNode[ self.stdin.fileno() ] = self
+        self.execed = False
+        self.lastCmd = None
+        self.lastPid = None
+        self.readbuf = ''
+        # Wait for prompt
+        while True:
+            data = self.read( 1024 )
+            if data[ -1 ] == chr( 127 ):
+                break
+            self.pollOut.poll()
+        self.waiting = False
+        self.cmd( 'unset HISTFILE; stty -echo; set +m' )
+
+    def setup_mgmt_namespace(self):
+        """Change the default network to mgmt namespace."""
+        addr = self.cmd("ip --brief -4 addr show dev eth0").split()[-1]
+        routes_link = self.cmd("ip route show dev eth0 scope link").splitlines()
+        routes_global = self.cmd("ip route show dev eth0 scope global").splitlines()
+        self.cmd("ip netns add mgmt")
+        self.cmd("ip link set netns mgmt eth0")
+        self.cmd("ip netns exec mgmt ip link set up lo")
+        self.cmd("ip netns exec mgmt ip link set up eth0")
+        self.cmd(f"ip netns exec mgmt ip addr add {addr} dev eth0")
+        for route in routes_link:
+            self.cmd(f"ip netns exec mgmt ip route add {route.strip()} dev eth0 scope link")
+        for route in routes_global:
+            self.cmd(f"ip netns exec mgmt ip route add {route.strip()} dev eth0 scope global")
 
     def setup_port_forward(self):
         """Create port forward for the pod."""
@@ -204,25 +278,25 @@ class K8sPod(Node):
         """Stop the Pod."""
         self.terminate()
 
-    def cmd(self, *args, **kwargs):
-        """Send a command, wait for output, and return it."""
-        verbose = kwargs.get("verbose", False)
-        log = info if verbose else debug
-        log("*** %s : %s\n" % (self.name, args))
-        # Allow sendCmd( [ list ] )
-        if len(args) == 1 and isinstance(args[0], list):
-            cmd = args[0]
-        # Allow sendCmd( cmd, arg1, arg2... )
-        elif len(args) > 0:
-            cmd = args
-        # Convert to string
-        if not isinstance(cmd, str):
-            cmd = " ".join([str(c) for c in cmd])
-        return self.sendCmd(cmd)
+    #def cmd(self, *args, **kwargs):
+    #    """Send a command, wait for output, and return it."""
+    #    verbose = kwargs.get("verbose", False)
+    #    log = info if verbose else debug
+    #    log("*** %s : %s\n" % (self.name, args))
+    #    # Allow sendCmd( [ list ] )
+    #    if len(args) == 1 and isinstance(args[0], list):
+    #        cmd = args[0]
+    #    # Allow sendCmd( cmd, arg1, arg2... )
+    #    elif len(args) > 0:
+    #        cmd = args
+    #    # Convert to string
+    #    if not isinstance(cmd, str):
+    #        cmd = " ".join([str(c) for c in cmd])
+    #    return self.sendCmd(cmd)
 
-    def sendCmd(self, cmd):
-        """Run command on node"""
-        return quietRun(f"{KUBECTL} exec -i {self.k8s_name} -- {cmd}")
+    #def sendCmd(self, cmd):
+    #    """Run command on node"""
+    #    return quietRun(f"{KUBECTL} exec -i {self.k8s_name} -- {cmd}")
 
     def popen(self, *args, **kwargs):
         """Return a Popen() object from kubectl exec."""
@@ -265,8 +339,42 @@ class K8sPod(Node):
         if cls.initialized:
             return
 
-        addCleanupCallback(cls.cleanup)
+        pod_token = None
+        if os.path.exists(K8S_TOKEN_FILE):
+            pod_token = open(K8S_TOKEN_FILE).read()
+        pod_namespace = None
+        if os.path.exists(K8S_NAMESPACE_FILE):
+            pod_namespace = open(K8S_NAMESPACE_FILE).read()
         
+        # setup kube config
+        if not os.path.exists(os.path.expanduser("~/.kube/config")):
+            proxy_cert_f = os.environ.get("K8S_PROXY_CERT_FILE", K8S_CERT_FILE)
+            proxy_token = os.environ.get("K8S_PROXY_TOKEN", pod_token)
+            proxy_ns = os.environ.get("K8S_PROXY_NAMESPACE", pod_namespace)
+            proxy_host = os.environ.get("K8S_PROXY_HOST")
+            proxy_port = os.environ.get("K8S_PROXY_PORT")
+            if any([
+                not os.path.exists(proxy_cert_f),
+                not proxy_ns,
+                not proxy_token,
+                not proxy_host,
+                not proxy_host,
+            ]):
+                return
+            quietRun(f"{KUBECTL} config set-cluster mnsecproxy --server=https://{proxy_host}:{proxy_port} --certificate-authority={proxy_cert_f}")
+            quietRun(f"{KUBECTL} config set-credentials default --token={proxy_token}")
+            quietRun(f"{KUBECTL} config set-context {proxy_ns}_default@mnsecproxy --cluster mnsecproxy --user default --namespace {proxy_ns}")
+            quietRun(f"{KUBECTL} config use-context {proxy_ns}_default@mnsecproxy")
+
+        # test kubernetes access
+        result = quietRun(f"{KUBECTL} kubectl auth can-i create pods")
+        if "yes" not in result:
+            error("\nERROR initializing Kubernetes...")
+            return
+
+        cls.pod_name, cls.pod_uid = parse_token(pod_token)
+
+        # setup Pod tag to avoid conflicts
         mnsec_tag = Path("/var/run/secrets/mnsec/tag")
         try:
             cls.tag = mnsec_tag.read_text()
@@ -277,6 +385,7 @@ class K8sPod(Node):
         
         cls.setup_node_affinity(os.environ.get("K8S_NODE_AFFINITY"))
 
+        addCleanupCallback(cls.cleanup)
         cls.initialized = True
 
     @classmethod
