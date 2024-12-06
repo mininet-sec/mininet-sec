@@ -273,8 +273,7 @@ class K8sPod(Node):
             p.kill()
 
     def delete_pod(self):
-        info("(waiting on Kubernetes...) ")
-        out, err, exitcode = errRun(f"{KUBECTL} delete pod {self.k8s_name} --wait=true")
+        out, err, exitcode = errRun(f"{KUBECTL} delete pod {self.k8s_name} --wait=false")
         if exitcode:
             error(f"Failed to delete Pod: out={out} err={err}")
 
