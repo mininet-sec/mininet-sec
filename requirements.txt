@@ -6,3 +6,5 @@ dash
 dash-cytoscape
 flask-socketio
 networkx
+pyaml
+pyjwt

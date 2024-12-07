@@ -30,23 +30,16 @@ if 'PYTHONPATH' in os.environ:
 # pylint: disable=wrong-import-position
 
 import mnsec.cli
-from mnsec.net import Mininet_sec, MininetWithControlNet, VERSION
+from mnsec.net import ( Mininet_sec, MininetWithControlNet, VERSION,
+                        TOPODEF, TOPOS, SWITCHDEF, SWITCHES, HOSTDEF, HOSTS,
+                        CONTROLLERDEF, CONTROLLERS, LINKDEF, LINKS )
 from mnsec.k8s import K8sPod
 
 from mininet.clean import cleanup
 from mininet.log import lg, LEVELS, info, debug, warn, error, output
 from mininet.net import Mininet, MininetWithControlNet, VERSION
-from mininet.node import ( Host, CPULimitedHost, Controller, OVSController,
-                           Ryu, NOX, RemoteController, findController,
-                           DefaultController, NullController,
-                           UserSwitch, OVSSwitch, OVSBridge,
-                           IVSSwitch )
-from mininet.nodelib import LinuxBridge
-from mininet.link import Link, TCLink, TCULink, OVSLink
-from mininet.topo import ( SingleSwitchTopo, LinearTopo,
-                           SingleSwitchReversedTopo, MinimalTopo )
-from mininet.topolib import TreeTopo, TorusTopo
-from mininet.util import customClass, specialClass, splitArgs, buildTopo
+from mininet.node import findController
+from mininet.util import customClass, splitArgs, buildTopo
 
 # Experimental! cluster edition prototype
 from mininet.examples.cluster import ( MininetCluster, RemoteHost,
@@ -58,44 +51,6 @@ from mininet.examples.clustercli import ClusterCLI
 
 PLACEMENT = { 'block': SwitchBinPlacer, 'random': RandomPlacer }
 
-# built in topologies, created only when run
-TOPODEF = 'minimal'
-TOPOS = { 'minimal': MinimalTopo,
-          'linear': LinearTopo,
-          'reversed': SingleSwitchReversedTopo,
-          'single': SingleSwitchTopo,
-          'tree': TreeTopo,
-          'torus': TorusTopo }
-
-SWITCHDEF = 'default'
-SWITCHES = { 'user': UserSwitch,
-             'ovs': OVSSwitch,
-             'ovsbr' : OVSBridge,
-             # Keep ovsk for compatibility with 2.0
-             'ovsk': OVSSwitch,
-             'ivs': IVSSwitch,
-             'lxbr': LinuxBridge,
-             'default': OVSSwitch }
-
-HOSTDEF = 'proc'
-HOSTS = { 'proc': Host,
-          'rt': specialClass( CPULimitedHost, defaults=dict( sched='rt' ) ),
-          'cfs': specialClass( CPULimitedHost, defaults=dict( sched='cfs' ) ) }
-
-CONTROLLERDEF = 'default'
-CONTROLLERS = { 'ref': Controller,
-                'ovsc': OVSController,
-                'nox': NOX,
-                'remote': RemoteController,
-                'ryu': Ryu,
-                'default': DefaultController,  # Note: overridden below
-                'none': NullController }
-
-LINKDEF = 'default'
-LINKS = { 'default': Link,  # Note: overridden below
-          'tc': TCLink,
-          'tcu': TCULink,
-          'ovs': OVSLink }
 
 # TESTS dict can contain functions and/or Mininet() method names
 # XXX: it would be nice if we could specify a default test, but
@@ -261,7 +216,7 @@ class MininetRunner( object ):
                          dest='test', help='|'.join( TESTS.keys() ) )
         opts.add_option( '--xterms', '-x', action='store_true',
                          default=False, help='spawn xterms for each node' )
-        opts.add_option( '--ipbase', '-i', type='string', default='10.0.0.0/8',
+        opts.add_option( '--ipbase', '-i', type='string', default='10.255.0.0/16',
                          help='base IP address for hosts' )
         opts.add_option( '--mac', action='store_true',
                          default=False, help='automatically set host MACs' )
@@ -325,6 +280,8 @@ class MininetRunner( object ):
         opts.add_option( '--k8s_node_affinity', type='string', default='',
                          metavar='node1,k8s-node2,server3',
                          help=('Comma-separated list of nodes where pods should be created (K8s nodeAffinity)') )
+        opts.add_option( '--topofile', type='string', default='',
+                         help='Topology file location (yaml)' )
 
         self.options, self.args = opts.parse_args()
 
@@ -381,7 +338,7 @@ class MininetRunner( object ):
                                      "for switch %s" %
                                      opts.switch )
 
-        topo = buildTopo( TOPOS, opts.topo )
+        topo = buildTopo( TOPOS, opts.topo ) if not opts.topofile else None
         switch = customClass( SWITCHES, opts.switch )
         host = customClass( HOSTS, opts.host )
         controller = [ customClass( CONTROLLERS, c )
@@ -422,6 +379,7 @@ class MininetRunner( object ):
             K8sPod.setup_node_affinity(opts.k8s_node_affinity)
 
         mn = Net( topo=topo,
+                  topoFile=opts.topofile,
                   switch=switch, host=host, controller=controller, link=link,
                   ipBase=opts.ipbase, inNamespace=opts.innamespace,
                   xterms=opts.xterms, autoSetMacs=opts.mac,

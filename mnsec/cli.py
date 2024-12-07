@@ -4,6 +4,8 @@ from select import poll
 from mininet.cli import CLI as MN_CLI
 from mininet.log import output, error
 
+from mnsec.k8s import K8sPod
+
 
 class CLI(MN_CLI):
     "Simple command-line interface to talk to nodes."
