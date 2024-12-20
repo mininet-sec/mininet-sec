@@ -40,15 +40,15 @@ class NetworkTopo( Topo ):
         h102 = self.addHost('h102', ip='192.168.10.2/24', defaultRoute='via 192.168.10.254')
         h103 = self.addHost('h103', ip='192.168.10.3/24', defaultRoute='via 192.168.10.254')
 
-        srv101 = self.addHost('srv101', ip='172.16.10.1/24', defaultRoute='via 172.16.10.254')
-        srv102 = self.addHost('srv102', ip='172.16.10.2/24', defaultRoute='via 172.16.10.254')
+        srv101 = self.addHost('srv101', ip='172.16.10.1/24', defaultRoute='via 172.16.10.254', apps=[{"name": "http", "port": 80}, {"name": "https", "port": 443}, {"name": "dns", "port": 53}])
+        srv102 = self.addHost('srv102', ip='172.16.10.2/24', defaultRoute='via 172.16.10.254', apps=[{"name": "smtp", "port": 25}, {"name": "imap", "port": 143}, {"name": "pop3", "port": 110})
         srv103 = self.addHost('srv103', ip='172.16.10.3/24', defaultRoute='via 172.16.10.254')
 
         rules_v4_as100 = {
             "filter": [
                 ':INPUT DROP',
                 ':OUTPUT ACCEPT',
-                ':FORWARD DROP',
+                ':FORWARD REJECT',
                 '-A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT',
                 '-A INPUT -p icmp -j ACCEPT',
                 '-A INPUT -s 192.168.10.0/24 -p udp --dport 53 -j ACCEPT',
@@ -59,6 +59,8 @@ class NetworkTopo( Topo ):
                 '-A FORWARD -s 192.168.10.0/24 -p tcp -m multiport --dports 80,443 -j ACCEPT',
                 '-A FORWARD -s 172.16.10.0/24 -p udp --dport 53 -j ACCEPT',
                 '-A FORWARD -d 172.16.10.1 -p tcp -m multiport --dports 80,443 -j ACCEPT',
+                '-A FORWARD -d 172.16.10.1 -p udp -m multiport --dports 53 -j ACCEPT',
+                '-A FORWARD -d 172.16.10.1 -p udp -m multiport --dports 123 -j DROP',
                 '-A FORWARD -d 172.16.10.2 -p tcp -m multiport --dports 25,143,110 -j ACCEPT',
             ],
             "nat": [
@@ -172,7 +174,7 @@ class NetworkTopo( Topo ):
         r501 = self.addHost('r501', ip='172.16.50.254/24', mynetworks=["172.16.50.0/24"])
         r502 = self.addHost('r502', ip='172.16.50.253/24', mynetworks=["172.16.50.0/24"])
 
-        srv501 = self.addHost('srv501', ip='172.16.50.1/24', defaultRoute='via 172.16.50.254')
+        srv501 = self.addHost('srv501', ip='172.16.50.1/24', defaultRoute='via 172.16.50.254', apps=[{"name": "http", "port": 80}, {"name": "https", "port": 443}])
         srv502 = self.addHost('srv502', ip='172.16.50.2/24', defaultRoute='via 172.16.50.254')
         srv503 = self.addHost('srv503', ip='172.16.50.3/24', defaultRoute='via 172.16.50.254')
 
@@ -203,9 +205,6 @@ if __name__ == '__main__':
         controller=lambda name: RemoteController(name, ip=resolve_name(sys.argv[1]), port=6653),
     )
     net.start()
-
-    AppManager(net, [net.get("srv501")], "http")
-    AppManager(net, [net.get("srv501")], "https")
 
     net.routingHelper()
 
