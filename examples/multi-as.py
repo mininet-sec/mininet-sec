@@ -41,7 +41,7 @@ class NetworkTopo( Topo ):
         h103 = self.addHost('h103', ip='192.168.10.3/24', defaultRoute='via 192.168.10.254')
 
         srv101 = self.addHost('srv101', ip='172.16.10.1/24', defaultRoute='via 172.16.10.254', apps=[{"name": "http", "port": 80}, {"name": "https", "port": 443}, {"name": "dns", "port": 53}])
-        srv102 = self.addHost('srv102', ip='172.16.10.2/24', defaultRoute='via 172.16.10.254', apps=[{"name": "smtp", "port": 25}, {"name": "imap", "port": 143}, {"name": "pop3", "port": 110})
+        srv102 = self.addHost('srv102', ip='172.16.10.2/24', defaultRoute='via 172.16.10.254', apps=[{"name": "smtp", "port": 25}, {"name": "imap", "port": 143}, {"name": "pop3", "port": 110}])
         srv103 = self.addHost('srv103', ip='172.16.10.3/24', defaultRoute='via 172.16.10.254')
 
         rules_v4_as100 = {
