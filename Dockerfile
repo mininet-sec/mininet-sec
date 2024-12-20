@@ -5,7 +5,7 @@ ENV DEBIAN_FRONTEND noninteractive
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends --no-install-suggests tini iputils-ping net-tools tcpdump x11-xserver-utils \
-		xterm iperf socat telnet tmux git iptables-persistent \
+		xterm iperf socat telnet tmux git iptables-persistent traceroute \
 		bridge-utils nmap hping3 mininet iperf3 hydra iproute2 \
 		python3-pip libpq-dev openvswitch-switch openvswitch-testcontroller curl jq d-itg \
 		gcc python3-dev \
