@@ -8,8 +8,8 @@ RUN apt-get update \
 		xterm iperf socat telnet tmux git iptables-persistent traceroute \
 		bridge-utils nmap hping3 mininet iperf3 hydra iproute2 \
 		python3-pip libpq-dev openvswitch-switch openvswitch-testcontroller curl jq d-itg \
-		gcc python3-dev \
-		apache2 ssh bind9 dovecot-imapd dovecot-pop3d \
+		gcc python3-dev vim \
+		apache2 ntp ssh bind9 dovecot-imapd dovecot-pop3d \
  && rm -f /usr/lib/python3.11/EXTERNALLY-MANAGED \
  && python3 -m pip install -e git+https://github.com/mininet-sec/mininet-sec@main#egg=mnsec \
  && cd /tmp \
