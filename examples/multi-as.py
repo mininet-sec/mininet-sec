@@ -48,7 +48,7 @@ class NetworkTopo( Topo ):
             "filter": [
                 ':INPUT DROP',
                 ':OUTPUT ACCEPT',
-                ':FORWARD REJECT',
+                ':FORWARD DROP',
                 '-A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT',
                 '-A INPUT -p icmp -j ACCEPT',
                 '-A INPUT -s 192.168.10.0/24 -p udp --dport 53 -j ACCEPT',
@@ -62,6 +62,7 @@ class NetworkTopo( Topo ):
                 '-A FORWARD -d 172.16.10.1 -p udp -m multiport --dports 53 -j ACCEPT',
                 '-A FORWARD -d 172.16.10.1 -p udp -m multiport --dports 123 -j DROP',
                 '-A FORWARD -d 172.16.10.2 -p tcp -m multiport --dports 25,143,110 -j ACCEPT',
+                '-A FORWARD -j REJECT',
             ],
             "nat": [
                 #'-A POSTROUTING -o fw0-eth99 -j MASQUERADE',
