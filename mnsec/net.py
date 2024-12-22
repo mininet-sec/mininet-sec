@@ -33,7 +33,7 @@ from mnsec.apps.app_manager import AppManager
 from mnsec.nodelib import IPTablesFirewall, Host
 from mnsec.api_server import APIServer
 from mnsec.k8s import K8sPod
-from mnsec.link import VxLanLink
+from mnsec.link import VxLanLink, L2tpLink
 
 from mininet.node import ( CPULimitedHost, Controller, OVSController,
                            Ryu, NOX, RemoteController,
@@ -89,6 +89,7 @@ LINKS = { 'default': Link,  # Note: overridden below
           'tcu': TCULink,
           'ovs': OVSLink,
           'vxlan': VxLanLink,
+          'l2tp': L2tpLink,
 }
 
 VERSION = "0.1.0"
@@ -322,7 +323,7 @@ class Mininet_sec(Mininet):
                 params["port2"] = newPort
 
         if isinstance(node1, K8sPod) or isinstance(node2, K8sPod):
-            params["cls"] = VxLanLink
+            params["cls"] = L2tpLink
 
         link = Mininet.addLink(self, node1, node2, **params)
 

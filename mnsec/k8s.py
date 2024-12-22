@@ -232,7 +232,7 @@ class K8sPod(Node):
 
     def setup_mgmt_namespace(self):
         """Change the default network to mgmt namespace."""
-        addr = self.cmd("ip --brief -4 addr show dev eth0").split()[-1]
+        addr = self.cmd("ip -4 addr show dev eth0 | grep inet").split()[1]
         routes_link = self.cmd("ip route show dev eth0 scope link").splitlines()
         routes_global = self.cmd("ip route show dev eth0 scope global").splitlines()
         self.cmd("ip netns add mgmt")
