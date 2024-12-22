@@ -158,8 +158,8 @@ class L2tpLink(Link):
 
         l2tp_id = cls.l2tp_next_id
         cls.l2tp_next_id += 1
-        cls.l2tp_next_id[intf1] = l2tp_id
-        cls.l2tp_next_id[intf2] = l2tp_id
+        cls.l2tp_intf_tun[intf1] = l2tp_id
+        cls.l2tp_intf_tun[intf2] = l2tp_id
 
         l2tp_port = 10000 + l2tp_id
         # ip l2tp add tunnel local 172.17.0.5 remote 172.17.0.8 tunnel_id 100 peer_tunnel_id 100 udp_dport 13000 udp_sport 13000
