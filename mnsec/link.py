@@ -151,18 +151,17 @@ class L2tpLink(Link):
 
         if deleteIntfs:
             # Delete any old interfaces with the same names
-            if intf1 in cls.l2tp_intf_tun:
-                runCmd1(f"{cmd1Pfx} ip l2tp del tunnel tunnel_id {cls.l2tp_intf_tun[intf1]}")
-            if intf2 in cls.l2tp_intf_tun:
-                runCmd2(f"{cmd2Pfx} ip l2tp del tunnel tunnel_id {cls.l2tp_intf_tun[intf2]}")
+            if intfname1 in cls.l2tp_intf_tun:
+                runCmd1(f"{cmd1Pfx} ip l2tp del tunnel tunnel_id {cls.l2tp_intf_tun[intfname1]}")
+            if intfname2 in cls.l2tp_intf_tun:
+                runCmd2(f"{cmd2Pfx} ip l2tp del tunnel tunnel_id {cls.l2tp_intf_tun[intfname2]}")
 
         l2tp_id = cls.l2tp_next_id
         cls.l2tp_next_id += 1
-        cls.l2tp_intf_tun[intf1] = l2tp_id
-        cls.l2tp_intf_tun[intf2] = l2tp_id
-
+        cls.l2tp_intf_tun[intfname1] = l2tp_id
+        cls.l2tp_intf_tun[intfname2] = l2tp_id
         l2tp_port = 10000 + l2tp_id
-        # ip l2tp add tunnel local 172.17.0.5 remote 172.17.0.8 tunnel_id 100 peer_tunnel_id 100 udp_dport 13000 udp_sport 13000
+
         cmdOut1 = runCmd1(
             f"{cmd1Pfx} ip l2tp add tunnel local {node1_ip} remote {node2_ip} "
             f"tunnel_id {l2tp_id} peer_tunnel_id {l2tp_id} udp_dport {l2tp_port} udp_sport {l2tp_port}",
@@ -182,12 +181,12 @@ class L2tpLink(Link):
             )
 
         cmdOut1 = runCmd1(
-            f"{cmd1Pfx} ip l2tp add session name {intf1} tunnel_id {l2tp_id} session_id {l2tp_id} peer_session_id {l2tp_id} ",
+            f"{cmd1Pfx} ip l2tp add session name {intfname1} tunnel_id {l2tp_id} session_id {l2tp_id} peer_session_id {l2tp_id} ",
             shell=True,
             k8s_mgmt=True,
         )
         cmdOut2 = runCmd2(
-            f"{cmd2Pfx} ip l2tp add session name {intf2} tunnel_id {l2tp_id} session_id {l2tp_id} peer_session_id {l2tp_id} ",
+            f"{cmd2Pfx} ip l2tp add session name {intfname2} tunnel_id {l2tp_id} session_id {l2tp_id} peer_session_id {l2tp_id} ",
             shell=True,
             k8s_mgmt=True,
         )
@@ -198,12 +197,12 @@ class L2tpLink(Link):
             )
 
         cmdOut1 = runCmd1(
-            f"{cmd1Pfx} ip link set netns {netns1} {l2addr1} dev {intf1}",
+            f"{cmd1Pfx} ip link set netns {netns1} {l2addr1} dev {intfname1}",
             shell=True,
             k8s_mgmt=True,
         )
         cmdOut2 = runCmd2(
-            f"{cmd2Pfx} ip link set netns {netns2} {l2addr2} dev {intf2}",
+            f"{cmd2Pfx} ip link set netns {netns2} {l2addr2} dev {intfname2}",
             shell=True,
             k8s_mgmt=True,
         )
