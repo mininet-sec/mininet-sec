@@ -1,4 +1,4 @@
-FROM debian:wheezy-slim
+FROM debian/eol:wheezy
 
 RUN --mount=source=.,target=/mnt,type=bind \
     export DEBIAN_FRONTEND=noninteractive \
