@@ -166,7 +166,7 @@ class NetworkTopo( Topo ):
 
         h401 = self.addHost('h401', ip='192.168.40.1/24', defaultRoute='via 192.168.40.254')
 
-        srv401 = self.addHost('srv401', cls=K8sPod, image="vulnerables/cve-2014-0160:latest", ip="172.16.40.1/24", defaultRoute="via 172.16.40.254")
+        srv401 = self.addHost('srv401', cls=K8sPod, image="hackinsdn/vuln-ssl-heartbleed:latest", ip="172.16.40.1/24", defaultRoute="via 172.16.40.254")
 
         self.addLink(r401, r402)
         self.addLink(r401, h401, ipv4_node1="192.168.40.254/24")
