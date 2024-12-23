@@ -6,6 +6,7 @@ from mininet.log import info, error, debug
 from mininet.util import makeIntfPair
 from mininet.link import Link
 from mininet.util import quietRun
+from mininet.clean import addCleanupCallback
 from mnsec.k8s import K8sPod
 
 
@@ -97,12 +98,25 @@ class VxLanLink(Link):
 class L2tpLink(Link):
     """L2TP Link"""
 
+    initialized = False
     l2tp_next_id = 1
     l2tp_intf_tun = {}
 
     def __init__(self, node1, node2, **params):
         """Create L2TP Link on nodes."""
+        if not self.initialized:
+            self.initialize()
         Link.__init__(self, node1, node2, **params)
+
+    @classmethod
+    def initialize(cls):
+        addCleanupCallback(cls.cleanup)
+        cls.initialized = True
+
+    @classmethod
+    def cleanup(cls):
+        info("*** Cleaning up L2TP interfaces\n")
+        quietRun("ip l2tp show tunnel | egrep -o 'Tunnel [0-9]+' | cut -d ' ' -f2 | xargs -r -L1 ip l2tp del tunnel tunnel_id")
 
     @classmethod
     def makeIntfPair(
@@ -211,3 +225,14 @@ class L2tpLink(Link):
             raise Exception(
                 f"Error create L2TP Link - failed to config intf ({intfname1},{intfname2}): node1={cmdOut1} node2={cmdOut2}"
             )
+
+    def stop(self):
+        "Override to remove L2TP session and tunnel"
+        node1 = self.intf1.node
+        node2 = self.intf2.node
+        runCmd1 = node1.cmd if isinstance(node1, K8sPod) else quietRun
+        runCmd2 = node2.cmd if isinstance(node2, K8sPod) else quietRun
+        if intfname1 in cls.l2tp_intf_tun:
+            runCmd1(f"{cmd1Pfx} ip l2tp del tunnel tunnel_id {cls.l2tp_intf_tun[intfname1]}")
+        if intfname2 in cls.l2tp_intf_tun:
+            runCmd2(f"{cmd2Pfx} ip l2tp del tunnel tunnel_id {cls.l2tp_intf_tun[intfname2]}")
