@@ -62,6 +62,7 @@ class NetworkTopo( Topo ):
                 '-A FORWARD -d 172.16.10.1 -p tcp -m multiport --dports 80,443 -j ACCEPT',
                 '-A FORWARD -d 172.16.10.1 -p udp -m multiport --dports 53 -j ACCEPT',
                 '-A FORWARD -d 172.16.10.1 -p udp -m multiport --dports 123 -j DROP',
+                '-A FORWARD -d 172.16.10.1 -p udp -m multiport --dports 500 -j ACCEPT',
                 '-A FORWARD -d 172.16.10.2 -p tcp -m multiport --dports 25,143,110 -j ACCEPT',
                 '-A FORWARD -j REJECT',
             ],
