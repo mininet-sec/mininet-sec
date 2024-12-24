@@ -381,6 +381,10 @@ class Mininet_sec(Mininet):
                             self[hop].cmd(f"ip route add {route}")
                             known_routes[hop].append(route)
                         prev_hop = hop
+            # add a generic default route with loopback next-hop and low
+            # priority (high metric). This will help packets go through in case
+            # RPF is configured in loose mode (net.ipv4.conf.all.rp_filter=1)
+            self[node1].cmd(f"ip route add default dev lo metric 4294967295")
 
     def run_cli(self, cmd):
         """Run on CLI if available."""
