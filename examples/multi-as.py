@@ -7,6 +7,7 @@ multi_as.py: Scenario with multiple ASNs, firewall, host, NetTAP, SDN switches
 import sys
 import socket
 import time
+import os
 from mnsec.topo import Topo
 from mnsec.net import Mininet_sec
 from mnsec.cli import CLI
@@ -41,8 +42,8 @@ class NetworkTopo( Topo ):
         h103 = self.addHost('h103', ip='192.168.10.3/24', defaultRoute='via 192.168.10.254')
 
         srv101 = self.addHost('srv101', ip='172.16.10.1/24', defaultRoute='via 172.16.10.254', apps=[{"name": "http", "port": 80}, {"name": "https", "port": 443}, {"name": "dns", "port": 53}, {"name": "ssh", "port": 22}])
-        srv102 = self.addHost('srv102', ip='172.16.10.2/24', defaultRoute='via 172.16.10.254', apps=[{"name": "smtp", "port": 25}, {"name": "imap", "port": 143}, {"name": "pop3", "port": 110}, {"name": "ssh", "port": 22}])
-        srv103 = self.addHost('srv103', ip='172.16.10.3/24', defaultRoute='via 172.16.10.254', apps=[{"name": "ssh", "port": 22}])
+        srv102 = self.addHost('srv102', ip='172.16.10.2/24', defaultRoute='via 172.16.10.254', apps=[{"name": "smtp", "port": 25, "username": "teste", "password": "hackinsdn"}, {"name": "ssh", "port": 22}])
+        srv103 = self.addHost('srv103', ip='172.16.10.3/24', defaultRoute='via 172.16.10.254')
 
         rules_v4_as100 = {
             "filter": [
@@ -63,7 +64,8 @@ class NetworkTopo( Topo ):
                 '-A FORWARD -d 172.16.10.1 -p udp -m multiport --dports 53 -j ACCEPT',
                 '-A FORWARD -d 172.16.10.1 -p udp -m multiport --dports 123 -j DROP',
                 '-A FORWARD -d 172.16.10.1 -p udp -m multiport --dports 500 -j ACCEPT',
-                '-A FORWARD -d 172.16.10.2 -p tcp -m multiport --dports 25,143,110 -j ACCEPT',
+                '-A FORWARD -d 172.16.10.2 -p tcp -m multiport --dports 25,143,110,587,993,995 -j ACCEPT',
+                '-A FORWARD -d 172.16.10.3 -p tcp -m multiport --dports 22,80,443 -j ACCEPT',
                 '-A FORWARD -j REJECT',
             ],
             "nat": [
@@ -93,7 +95,7 @@ class NetworkTopo( Topo ):
 
         h201 = self.addHost('h201', ip='192.168.20.1/24', defaultRoute='via 192.168.20.254')
 
-        ids201 = self.addHost('ids201', cls=K8sPod, image="hackinsdn/suricata:latest", env=[{"name": "SURICATA_IFACE", "value": "ids201-eth0"}, {"name": "SURICATA_HOME_NET", "value": "192.168.20.0/24,172.16.20.0/24"}])
+        ids201 = self.addHost('ids201', cls=K8sPod, image="hackinsdn/suricata:latest", env=[{"name": "SURICATA_IFACE", "value": "ids201-eth0"}, {"name": "SURICATA_HOME_NET", "value": "192.168.20.0/24,172.16.20.0/24"}, {"name": "KYTOS", "value": os.environ.get("KYTOS", "")}])
 
         srv201 = self.addHost('srv201', ip='172.16.20.1/24', defaultRoute='via 172.16.20.254')
 
