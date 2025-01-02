@@ -6,7 +6,7 @@ from mininet.log import info, error, debug
 from mininet.util import makeIntfPair
 from mininet.link import Link
 from mininet.util import quietRun
-from mininet.clean import addCleanupCallback
+from mininet.clean import addCleanupCallback, sh
 from mnsec.k8s import K8sPod
 
 
@@ -108,7 +108,9 @@ class L2tpLink(Link):
     @classmethod
     def cleanup(cls):
         info("*** Cleaning up L2TP interfaces\n")
-        quietRun("ip l2tp show tunnel | egrep -o 'Tunnel [0-9]+' | cut -d ' ' -f2 | xargs -r -L1 ip l2tp del tunnel tunnel_id")
+        tunnels = sh("ip l2tp show tunnel | egrep -o 'Tunnel [0-9]+' | cut -d ' ' -f2").splitlines()
+        for tun_id in tunnels:
+            sh(f"ip l2tp del tunnel tunnel_id {tun_id}")
 
     @classmethod
     def makeIntfPair(
@@ -222,12 +224,12 @@ class L2tpLink(Link):
         "Override to remove L2TP session and tunnel"
         node1 = self.intf1.node
         node2 = self.intf2.node
-        runCmd1 = node1.cmd if isinstance(node1, K8sPod) else quietRun
-        runCmd2 = node2.cmd if isinstance(node2, K8sPod) else quietRun
-        if intfname1 in cls.l2tp_intf_tun:
-            runCmd1(f"{cmd1Pfx} ip l2tp del tunnel tunnel_id {cls.l2tp_intf_tun[intfname1]}")
-        if intfname2 in cls.l2tp_intf_tun:
-            runCmd2(f"{cmd2Pfx} ip l2tp del tunnel tunnel_id {cls.l2tp_intf_tun[intfname2]}")
+        cmd1Pfx = "ip netns exec mgmt" if isinstance(node1, K8sPod) else ""
+        cmd2Pfx = "ip netns exec mgmt" if isinstance(node2, K8sPod) else ""
+        if self.intf1.name in self.l2tp_intf_tun:
+            node1.cmd(f"{cmd1Pfx} ip l2tp del tunnel tunnel_id {self.l2tp_intf_tun[self.intf1.name]}")
+        if self.intf2.name in self.l2tp_intf_tun:
+            node2.cmd(f"{cmd2Pfx} ip l2tp del tunnel tunnel_id {self.l2tp_intf_tun[self.intf2.name]}")
 
 
 addCleanupCallback(L2tpLink.cleanup)
