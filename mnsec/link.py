@@ -98,20 +98,12 @@ class VxLanLink(Link):
 class L2tpLink(Link):
     """L2TP Link"""
 
-    initialized = False
     l2tp_next_id = 1
     l2tp_intf_tun = {}
 
     def __init__(self, node1, node2, **params):
         """Create L2TP Link on nodes."""
-        if not self.initialized:
-            self.initialize()
         Link.__init__(self, node1, node2, **params)
-
-    @classmethod
-    def initialize(cls):
-        addCleanupCallback(cls.cleanup)
-        cls.initialized = True
 
     @classmethod
     def cleanup(cls):
@@ -236,3 +228,6 @@ class L2tpLink(Link):
             runCmd1(f"{cmd1Pfx} ip l2tp del tunnel tunnel_id {cls.l2tp_intf_tun[intfname1]}")
         if intfname2 in cls.l2tp_intf_tun:
             runCmd2(f"{cmd2Pfx} ip l2tp del tunnel tunnel_id {cls.l2tp_intf_tun[intfname2]}")
+
+
+addCleanupCallback(L2tpLink.cleanup)
