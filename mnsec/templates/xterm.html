@@ -66,6 +66,13 @@
         term.write(data.output);
       });
 
+      socket.on("server-disconnected", function (data) {
+        console.log("server-disconnected {{host}}");
+        window.close();
+        term.dispose();
+        //socket.disconnect();
+      });
+
       socket.on("connect", () => {
         fitToscreen();
         status.innerHTML =
@@ -133,6 +140,10 @@
 
       const wait_ms = 50;
       window.onresize = debounce(fitToscreen, wait_ms);
+
+      window.onbeforeunload = function () {
+        socket.emit('disconnect', {'host': "{{host}}"});
+      }
     </script>
   </body>
 </html>

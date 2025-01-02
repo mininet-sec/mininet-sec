@@ -364,12 +364,11 @@ class APIServer:
             terminal.
             """
             host = data.get("host")
-            if not host or host not in self.xterm_conns:
-                warning(f"Host not connected host={host}\n")
+            session = self.xterm_conns.get(flask.request.sid)
+            if not session:
+                warning(f"Host not connected host={host} session_id={flask.request.sid}\n")
                 return False
-            (fd, _) = self.xterm_conns[host]
-            if fd:
-                os.write(fd, data["input"].encode())
+            os.write(session[0], data["input"].encode())
 
         @self.socketio.on("connect", namespace="/pty")
         def pty_connect(auth):
@@ -381,8 +380,9 @@ class APIServer:
                     % (host, flask.request.event["args"])
                 )
                 return False
-            if host in self.xterm_conns:
-                warning(f"Host already connected host={host}\n")
+            session_id = flask.request.sid
+            if session_id in self.xterm_conns:
+                warning(f"Host already connected host={host} session_id={session_id}\n")
                 return False
 
             # create child process attached to a pty we can read from and write to
@@ -406,24 +406,21 @@ class APIServer:
                         stdout, stderr = process.communicate()
                     except:
                         process.kill()
-                # after finish make sure we cleanup
-                self.xterm_conns.pop(host, None)
-                # TODO: trigger a disconnect socketio event! (even if it is possible to close the tab, we shouldnt do that to avoid loosing data on the section)
             else:
                 # this is the parent process fork.
                 # store child fd and pid
-                self.xterm_conns[host] = (fd, child_pid)
+                self.xterm_conns[session_id] = (fd, child_pid, host)
                 set_winsize(fd, 50, 50)
-                self.socketio.start_background_task(read_and_forward_pty_output, host, fd)
+                self.socketio.start_background_task(read_and_forward_pty_output, session_id)
 
         @self.socketio.on("resize", namespace="/pty")
         def resize(data):
             """resize window lenght"""
-            host = data.get("host")
-            if not host or host not in self.xterm_conns:
-                warning(f"Host not connected host={host}\n")
+            session_id = flask.request.sid
+            if session_id not in self.xterm_conns:
+                warning(f"Host not connected session_id={session_id}\n")
                 return False
-            (fd, _) = self.xterm_conns[host]
+            (fd, _, _) = self.xterm_conns[session_id]
             if fd:
                 set_winsize(fd, data["dims"]["rows"], data["dims"]["cols"])
 
@@ -431,18 +428,20 @@ class APIServer:
         def pty_disconnect():
             """client disconnected."""
             host = flask.request.args.get("host") 
-            if not host or host not in self.xterm_conns:
+            session_id = flask.request.sid
+            if session_id not in self.xterm_conns:
                 #warning(f"Host not connected host={host}\n")
                 return False
-            (_, pid) = self.xterm_conns[host]
+            (_, pid, _) = self.xterm_conns[session_id]
             try:
                 os.kill(pid, signal.SIGTERM)
             except Exception as exc:
                 warning(f"Error terminating xterm child process for {host}: {exc}\n")
                 pass
-            self.xterm_conns.pop(host, None)
+            self.xterm_conns.pop(session_id, None)
 
-        def read_and_forward_pty_output(host, fd):
+        def read_and_forward_pty_output(session_id):
+            fd, pid, host = self.xterm_conns[session_id]
             max_read_bytes = 1024 * 20
             while True:
                 self.socketio.sleep(0.01)
@@ -458,9 +457,15 @@ class APIServer:
                     )
                 except Exception as exc:
                     #info(f"error reading fd={fd} exc={exc}\n")
-                    self.xterm_conns.pop(host, None)
                     break
                 self.socketio.emit(f"pty-output-{host}", {"output": output}, namespace="/pty")
+            socketio.emit("server-disconnected", namespace="/pty", to=session_id)
+            try:
+                os.close(fd)
+                os.kill(pid, signal.SIGTERM)
+                self.xterm_conns.pop(session_id, None)
+            except:
+                pass
 
         self.topology_loaded = True
 
