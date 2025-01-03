@@ -224,12 +224,14 @@ class L2tpLink(Link):
         "Override to remove L2TP session and tunnel"
         node1 = self.intf1.node
         node2 = self.intf2.node
+        runCmd1 = node1.cmd if isinstance(node1, K8sPod) else quietRun
+        runCmd2 = node2.cmd if isinstance(node2, K8sPod) else quietRun
         cmd1Pfx = "ip netns exec mgmt" if isinstance(node1, K8sPod) else ""
         cmd2Pfx = "ip netns exec mgmt" if isinstance(node2, K8sPod) else ""
         if self.intf1.name in self.l2tp_intf_tun:
-            node1.cmd(f"{cmd1Pfx} ip l2tp del tunnel tunnel_id {self.l2tp_intf_tun[self.intf1.name]}")
+            runCmd1(f"{cmd1Pfx} ip l2tp del tunnel tunnel_id {self.l2tp_intf_tun[self.intf1.name]}", shell=True)
         if self.intf2.name in self.l2tp_intf_tun:
-            node2.cmd(f"{cmd2Pfx} ip l2tp del tunnel tunnel_id {self.l2tp_intf_tun[self.intf2.name]}")
+            runCmd2(f"{cmd2Pfx} ip l2tp del tunnel tunnel_id {self.l2tp_intf_tun[self.intf2.name]}", shell=True)
 
 
 addCleanupCallback(L2tpLink.cleanup)

@@ -458,8 +458,8 @@ class APIServer:
                 except Exception as exc:
                     #info(f"error reading fd={fd} exc={exc}\n")
                     break
-                self.socketio.emit(f"pty-output-{host}", {"output": output}, namespace="/pty")
-            socketio.emit("server-disconnected", namespace="/pty", to=session_id)
+                self.socketio.emit(f"pty-output-{host}", {"output": output}, namespace="/pty", to=session_id)
+            self.socketio.emit("server-disconnected", namespace="/pty", to=session_id)
             try:
                 os.close(fd)
                 os.kill(pid, signal.SIGTERM)
