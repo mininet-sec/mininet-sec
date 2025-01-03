@@ -72,6 +72,7 @@ cp -r /etc/apache2 $BASE_DIR
 mkdir $BASE_DIR/www
 echo "<h1>Test server at $NAME</h1>" > $BASE_DIR/www/index.html
 sed -i "s@DocumentRoot /var/www/html@DocumentRoot $BASE_DIR/www@g" $BASE_DIR/sites-available/*.conf
+sed -i "s@Directory /var/www/@Directory $BASE_DIR/www/@g" $BASE_DIR/apache2.conf
 
 cat > $BASE_DIR/conf-available/custom-auth.conf <<EOF
 <Directory "$BASE_DIR/www/admin">
