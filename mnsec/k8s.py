@@ -138,7 +138,7 @@ class K8sPod(Node):
         if self.k8s_command:
             pod_manifest["spec"]["containers"][0]["command"] = self.k8s_command
         if self.k8s_args:
-            pod_manifest["spec"]["containers"][0]["args"] = self.k8s_command
+            pod_manifest["spec"]["containers"][0]["args"] = self.k8s_args
         if self.node_affinity:
             pod_manifest["spec"]["affinity"] = {
                 "nodeAffinity": {
