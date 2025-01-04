@@ -95,7 +95,9 @@ class NetworkTopo( Topo ):
 
         h201 = self.addHost('h201', ip='192.168.20.1/24', defaultRoute='via 192.168.20.254')
 
-        ids201 = self.addHost('ids201', cls=K8sPod, image="hackinsdn/suricata:latest", env=[{"name": "SURICATA_IFACE", "value": "ids201-eth0"}, {"name": "SURICATA_HOME_NET", "value": "192.168.20.0/24,172.16.20.0/24"}, {"name": "KYTOS", "value": os.environ.get("KYTOS", "")}])
+        kytos = self.addHost('kytos', cls=K8sPod, image="hackinsdn/kytos:allinone", env=[{"name": "MONGO_USERNAME", "value": "kytos"}, {"name": "MONGO_PASSWORD", "value": "kytos"}, {"name": "MONGO_DBNAME", "value": "kytos"}, {"name": "MONGO_HOST_SEEDS", "value": "127.0.0.1:27017"}], publish=["6653:6653", "8181:8181"])
+
+        ids201 = self.addHost('ids201', cls=K8sPod, image="hackinsdn/suricata:latest", env=[{"name": "SURICATA_IFACE", "value": "ids201-eth0"}, {"name": "SURICATA_HOME_NET", "value": "192.168.20.0/24,172.16.20.0/24"}])
 
         srv201 = self.addHost('srv201', ip='172.16.20.1/24', defaultRoute='via 172.16.20.254')
 
@@ -116,6 +118,7 @@ class NetworkTopo( Topo ):
         s201 = self.addSwitch('s201')
         s202 = self.addSwitch('s202')
         s203 = self.addSwitch('s203')
+        s204 = self.addSwitch('s204', cls=LinuxBridge)
 
         self.addLink(r201, r202)
         self.addLink(s201, h201)
@@ -127,6 +130,9 @@ class NetworkTopo( Topo ):
         self.addLink(s202, s203)
         self.addLink(fw201, r201, ipv4_node1="10.20.0.254/24", ipv4_node2="10.20.0.1/24")
         self.addLink(s203, ids201)
+        self.addLink(s204, fw201, ipv4_node2="10.20.1.1/24")
+        self.addLink(s204, ids201, ipv4_node2="10.20.1.2/24")
+        self.addLink(s204, kytos, ipv4_node2="10.20.1.3/24")
 
         ####################
         ## AS 300
@@ -210,7 +216,7 @@ if __name__ == '__main__':
     info( 'Starting Mininet-Sec\n' )
     net = Mininet_sec(
         topo=NetworkTopo(),
-        controller=lambda name: RemoteController(name, ip=resolve_name(sys.argv[1]), port=6653),
+        controller=lambda name: RemoteController(name, ip="127.0.0.1", port=6653),
     )
     net.start()
 
