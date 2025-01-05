@@ -95,9 +95,9 @@ class NetworkTopo( Topo ):
 
         h201 = self.addHost('h201', ip='192.168.20.1/24', defaultRoute='via 192.168.20.254')
 
-        kytos = self.addHost('kytos', cls=K8sPod, image="hackinsdn/kytos:allinone", args=["-E"], env=[{"name": "MONGO_USERNAME", "value": "kytos"}, {"name": "MONGO_PASSWORD", "value": "kytos"}, {"name": "MONGO_DBNAME", "value": "kytos"}, {"name": "MONGO_HOST_SEEDS", "value": "127.0.0.1:27017"}], publish=["6653:6653", "8181:8181"])
+        kytos = self.addHost('kytos', ip=None, cls=K8sPod, image="hackinsdn/kytos:allinone", args=["-E"], env=[{"name": "MONGO_USERNAME", "value": "kytos"}, {"name": "MONGO_PASSWORD", "value": "kytos"}, {"name": "MONGO_DBNAME", "value": "kytos"}, {"name": "MONGO_HOST_SEEDS", "value": "127.0.0.1:27017"}], publish=["6653:6653", "8181:8181"])
 
-        ids201 = self.addHost('ids201', cls=K8sPod, image="hackinsdn/suricata:latest", env=[{"name": "SURICATA_IFACE", "value": "ids201-eth0"}, {"name": "SURICATA_HOME_NET", "value": "192.168.20.0/24,172.16.20.0/24"}])
+        ids201 = self.addHost('ids201', ip=None, cls=K8sPod, image="hackinsdn/suricata:latest", env=[{"name": "SURICATA_IFACE", "value": "ids201-eth0"}, {"name": "SURICATA_HOME_NET", "value": "192.168.20.0/24,172.16.20.0/24"}])
 
         srv201 = self.addHost('srv201', ip='172.16.20.1/24', defaultRoute='via 172.16.20.254')
 
