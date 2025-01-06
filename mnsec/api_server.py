@@ -32,7 +32,7 @@ class APIServer:
         self.port = port
 
         self.server = flask.Flask(__name__)
-        self.app = Dash(__name__, server=self.server)
+        self.app = Dash(__name__, server=self.server, suppress_callback_exceptions=True)
         self.app.title = "Mininet-Sec"
         #self.server = make_server(listen, port, self.app.server, threaded=True, processes=0)
         self.socketio = SocketIO(self.server)
@@ -42,6 +42,8 @@ class APIServer:
         self.xterm_conns = {}
 
         self.topology_loaded = False
+
+        self.default_stylesheet = []
 
         # loading layout
         self.app.layout = html.Div([
@@ -64,6 +66,87 @@ class APIServer:
             else:
                 return no_update
 
+        @callback(
+            Output("cytoscape", "layout"),
+            Input("dropdown-update-layout", "value"),
+        )
+        def update_layout(layout):
+            return {"name": layout, "animate": True}
+
+        @callback(
+            Output("tap-node-data-json-output", "children"),
+            Input("cytoscape", "selectedNodeData"),
+        )
+        def displayTapNodeData(data):
+            return json.dumps(data, indent=2)
+
+        @callback(
+            Output("tap-edge-data-json-output", "children"),
+            Input("cytoscape", "selectedEdgeData"),
+        )
+        def displayTapEdgeData(data):
+            return json.dumps(data, indent=2)
+
+        @callback(
+            Output("console-cmd-result", "children"),
+            Input("cmd_str", "value"),
+        )
+        def update_output(cmd_str):
+            if not cmd_str:
+                return ""
+            cmdOut = self.mnsec.run_cli(cmd_str)
+            return cmdOut
+
+        @callback(
+            Output('cytoscape', 'elements'),
+            Input('cytoscape', 'selectedNodeData'),
+            Input('input-node-label', 'value'),
+            State('cytoscape', 'elements'),
+        )
+        def updateNodeLabel(data, new_label, elements):
+            if data:
+                for ele in elements:
+                    if ele["data"]["id"] == data[-1]["id"]:
+                        ele["data"]["label"] = str(new_label)
+            return elements
+
+        @callback(
+            Output('change-node-id', 'children'),
+            Input('cytoscape', 'selectedNodeData')
+        )
+        def displayNodeLabelSettings(data):
+            if not data:
+                return ""
+            return data[-1].get("id", "")
+
+        @callback(
+            Output('input-node-label', 'value'),
+            Input('cytoscape', 'selectedNodeData')
+        )
+        def displayNodeLabelSettings(data):
+            if not data:
+                return ""
+            return data[-1].get("label", "")
+
+        @callback(
+            Output('change-node-data', 'hidden'),
+            Input('cytoscape', 'selectedNodeData')
+        )
+        def displayChangeNodeData(data):
+            return False if data and len(data) == 1 else True
+
+        @callback(
+            Output('cytoscape', 'stylesheet'),
+            Input('show-interface-name', 'value'),
+            prevent_initial_call=True,
+        )
+        def show_interface_name(show):
+            for item in self.default_stylesheet:
+                if item["selector"] == "edge":
+                    item["style"]["source-label"] = "" if show == "disabled" else "data(slabel)"
+                    item["style"]["target-label"] = "" if show == "disabled" else "data(tlabel)"
+            return self.default_stylesheet
+
         self.server.add_url_rule("/topology", None, self.get_topology, methods=["GET"])
         self.server.add_url_rule("/add_node", None, self.add_node, methods=["POST"])
         self.server.add_url_rule("/add_link", None, self.add_link, methods=["POST"])
@@ -71,13 +154,34 @@ class APIServer:
 
     def setup(self):
         elements = []
+        groups = {}
         for host in self.mnsec.hosts:
             elements.append({"data": {"id": host.name, "label": host.name, "type": "host"}, "classes": "rectangle"})
+            # setup groups
+            group = host.params.get("group")
+            if not group:
+                continue
+            group_id = groups.get(group)
+            if not group_id:
+                group_id = len(groups.keys()) + 1
+                groups[group] = group_id
+            elements[-1]["data"]["parent"] = f"group-{group_id}"
         for switch in self.mnsec.switches:
             dpid = ":".join(textwrap.wrap(getattr(switch, "dpid", "0000000000000000"), 2))
             elements.append({"data": {"id": switch.name, "label": switch.name, "type": "switch", "dpid": dpid}})
+            # setup groups
+            group = switch.params.get("group")
+            if not group:
+                continue
+            group_id = groups.get(group)
+            if not group_id:
+                group_id = len(groups.keys()) + 1
+                groups[group] = group_id
+            elements[-1]["data"]["parent"] = f"group-{group_id}"
         for link in self.mnsec.links:
-            elements.append({"data": {"source": link.intf1.node.name, "target": link.intf2.node.name, "slabel": link.intf1.name, "tlabel": link.intf2.name}})
+            elements.append({"data": {"source": link.intf1.node.name, "target": link.intf2.node.name, "slabel": link.intf1.name.split("-")[-1], "tlabel": link.intf2.name.split("-")[-1], "source_interface": link.intf1.name, "target_interface": link.intf2.name}})
+        for group, group_id in groups.items():
+            elements.insert(0, {"data": {"group": "nodes", "id": f"group-{group_id}", "label": group, "type": "group"}, "classes": "groupnode"})
 
         context_menu = [
             {
@@ -131,7 +235,7 @@ class APIServer:
             },
             "tab": {"height": "calc(98vh - 115px)"},
         }
-        default_stylesheet = [
+        self.default_stylesheet = [
             # Group selectors
             {
                 'selector': 'node',
@@ -193,7 +297,7 @@ class APIServer:
                         elements=elements,
                         contextMenu=context_menu,
                         autoRefreshLayout=False,
-                        stylesheet = default_stylesheet,
+                        stylesheet = self.default_stylesheet,
                     ),  # end Cytoscape
                 ]
             ), # end div eight columns
@@ -277,86 +381,6 @@ class APIServer:
                 ],
             ),  # end div four columns
         ])
-
-        @callback(
-            Output("cytoscape", "layout"),
-            Input("dropdown-update-layout", "value"),
-        )
-        def update_layout(layout):
-            return {"name": layout, "animate": True}
-
-        @callback(
-            Output("tap-node-data-json-output", "children"),
-            Input("cytoscape", "selectedNodeData")
-        )
-        def displayTapNodeData(data):
-            return json.dumps(data, indent=2)
-
-        @callback(
-            Output("tap-edge-data-json-output", "children"),
-            Input("cytoscape", "selectedEdgeData"),
-        )
-        def displayTapEdgeData(data):
-            return json.dumps(data, indent=2)
-
-        @callback(
-            Output("console-cmd-result", "children"),
-            Input("cmd_str", "value"),
-        )
-        def update_output(cmd_str):
-            if not cmd_str:
-                return ""
-            cmdOut = self.mnsec.run_cli(cmd_str)
-            return cmdOut
-
-        @callback(
-            Output('cytoscape', 'elements'),
-            Input('cytoscape', 'selectedNodeData'),
-            Input('input-node-label', 'value'),
-            State('cytoscape', 'elements'),
-        )
-        def updateNodeLabel(data, new_label, elements):
-            if data:
-                for ele in elements:
-                    if ele["data"]["id"] == data[-1]["id"]:
-                        ele["data"]["label"] = str(new_label)
-            return elements
-
-        @callback(
-            Output('change-node-id', 'children'),
-            Input('cytoscape', 'selectedNodeData')
-        )
-        def displayNodeLabelSettings(data):
-            if not data:
-                return ""
-            return data[-1].get("id", "")
-
-        @callback(
-            Output('input-node-label', 'value'),
-            Input('cytoscape', 'selectedNodeData')
-        )
-        def displayNodeLabelSettings(data):
-            if not data:
-                return ""
-            return data[-1].get("label", "")
-
-        @callback(
-            Output('change-node-data', 'hidden'),
-            Input('cytoscape', 'selectedNodeData')
-        )
-        def displayChangeNodeData(data):
-            return False if data and len(data) == 1 else True
-
-        @callback(
-            Output('cytoscape', 'stylesheet'),
-            Input('show-interface-name', 'value'),
-        )
-        def show_interface_name(show):
-            for item in default_stylesheet:
-                if item["selector"] == "edge":
-                    item["style"]["source-label"] = "" if show == "disabled" else "data(slabel)"
-                    item["style"]["target-label"] = "" if show == "disabled" else "data(tlabel)"
-            return default_stylesheet
 
         @self.socketio.on("pty-input", namespace="/pty")
         def pty_input(data):
