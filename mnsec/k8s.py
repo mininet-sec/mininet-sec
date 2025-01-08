@@ -424,6 +424,7 @@ class K8sPod(Node):
         if not pods:
             return
         pods = " ".join(pods.split())
+        info(pods)
         quietRun(f"{KUBECTL} delete pods --wait=false {pods}")
         cls.wait_deleted()
 
