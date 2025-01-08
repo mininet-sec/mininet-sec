@@ -405,8 +405,7 @@ class K8sPod(Node):
         if not pods:
             return
         pods = " ".join(pods.split())
-        info(f"{pods} (Please wait a few seconds)...\n")
-        quietRun(f"{KUBECTL} delete pods --wait=true {pods}")
+        quietRun(f"{KUBECTL} delete pods --wait=false {pods}")
 
     @classmethod
     def setup_node_affinity(cls, nodes):
