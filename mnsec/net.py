@@ -288,7 +288,7 @@ class Mininet_sec(Mininet):
 
         Mininet.stop(self)
 
-        info("\n***Cleanup K8s Pods\n")
+        info("*** Cleanup K8s Pods\n")
         K8sPod.wait_deleted()
 
     def addFirewall( self, name='fw0', **params):

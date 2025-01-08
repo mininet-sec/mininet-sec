@@ -207,9 +207,10 @@ class K8sPod(Node):
         info(f" (waiting pods deletion...)")
         for _ in range(60):
             output = quietRun(
-                f"{KUBECTL} get pod --selector app=mnsec-{cls.tag} -o custom-columns=IP:.status.podIP,PHASE:.status.phase --no-headers=true"
+                f"{KUBECTL} get pod --selector app=mnsec-{cls.tag} "
+                "-o custom-columns=IP:.status.podIP,PHASE:.status.phase "
+                "--no-headers=true"
             )
-            info(f"|{output}|")
             if not output:
                 info(" done\n")
                 break
