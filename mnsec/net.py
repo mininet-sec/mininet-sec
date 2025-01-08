@@ -286,11 +286,10 @@ class Mininet_sec(Mininet):
         if self.run_api_server:
             self.api_server.stop()
 
-        for host in self.hosts:
-            if hasattr( host, 'post_stop' ):
-                host.post_stop()
-
         Mininet.stop(self)
+
+        info("\n***Cleanup K8s Pods\n")
+        K8sPod.wait_deleted()
 
     def addFirewall( self, name='fw0', **params):
         """Add a Firewall to the Mininet-Sec network
