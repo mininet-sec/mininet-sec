@@ -184,6 +184,11 @@ class K8sPod(Node):
         # setup port forward
         self.setup_port_forward()
 
+    def post_stop(self):
+        """Run steps post-stop"""
+        # make sure pod is deleted
+        self.wait_deleted(self.k8s_name)
+
     def wait_running(self, wait=float("inf"), step=2):
         """Wait for Pod to be Running and get its IP address."""
         while wait > 0:
@@ -199,6 +204,20 @@ class K8sPod(Node):
                 pass
             time.sleep(step)
             wait -= step
+
+    @classmethod
+    def wait_deleted(cls, pod_name=""):
+        display_name = f"pod {pod_name}" if pod_name else "pods"
+        info(f" (waiting {display_name} deletion...)")
+        for _ in range(60):
+            output = quietRun(
+                f"{KUBECTL} get pod {pod_name} --selector app=mnsec-{cls.tag} -o custom-columns=IP:.status.podIP,PHASE:.status.phase --no-headers=true"
+            )
+            if not output:
+                break
+            time.sleep(2)
+        else:
+            info(f"Timeout waiting for {display_name} to be deleted")
 
     def setup_shell(self):
         cmd = [
@@ -406,6 +425,7 @@ class K8sPod(Node):
             return
         pods = " ".join(pods.split())
         quietRun(f"{KUBECTL} delete pods --wait=false {pods}")
+        cls.wait_deleted()
 
     @classmethod
     def setup_node_affinity(cls, nodes):
