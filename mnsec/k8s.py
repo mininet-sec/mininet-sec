@@ -204,7 +204,7 @@ class K8sPod(Node):
     def wait_deleted(cls):
         if not cls.initialized:
             return
-        info(f" (waiting pods deletion...)")
+        info(f" (waiting pods deletion)")
         for _ in range(60):
             output = quietRun(
                 f"{KUBECTL} get pod --selector app=mnsec-{cls.tag} "
@@ -214,6 +214,7 @@ class K8sPod(Node):
             if not output:
                 info(" done\n")
                 break
+            info(".")
             time.sleep(2)
         else:
             info(f" Timeout waiting for pods to be deleted\n")
