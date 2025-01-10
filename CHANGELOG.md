@@ -2,6 +2,10 @@
 
 ## [UNRELEASED] - Under development
 
+- TODO
+
+## [1.1.0] - 2025-01-10
+
 - Enhancements on the topology component for loading topology from YAML files
 - Kubernetes backend was refactored to leverage a Kubernetes Proxy being developed on the context of HackInSDN project, which will allow fine-grained control about Pods being created via Mininet-Sec as well as it will eliminate the requirement of Kube config on the Mininet-Sec pod
 - Isolating management IP address from Pods created via Mininet-Sec for a `mgmt` Linux network namespace in order to provide more isolation from th Kubernetes Pod network (not having the kubernetes pod network is not an option, otherwise we cannot create the VXLAN tunnels)

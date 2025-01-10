@@ -1,14 +1,10 @@
 #!/usr/bin/env python3
-
-"Setuptools params"
+"""Setuptools params"""
 
 from setuptools import setup, find_packages
 import glob
 
-# Get version number from source tree
-#import sys
-#sys.path.append( '.' )
-VERSION = "0.1.0"
+VERSION = "1.1.0"
 
 modname = distname = 'mnsec'
 

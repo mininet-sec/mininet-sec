@@ -92,7 +92,7 @@ LINKS = { 'default': Link,  # Note: overridden below
           'l2tp': L2tpLink,
 }
 
-VERSION = "0.1.0"
+VERSION = "1.1.0"
 
 UUID_PATTERN = re.compile(r'^[\da-f]{8}-([\da-f]{4}-){3}[\da-f]{12}$')
 
