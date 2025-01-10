@@ -4,7 +4,7 @@
 
 - TODO
 
-## [1.0.0] - 2024-09-16
+## [1.0.0] - 2024-09-16 {#1.0.0}
 
 This is the first release of Mininet-Sec. The first release include a set of features:
 
