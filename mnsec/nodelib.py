@@ -11,12 +11,25 @@ from mininet.node import Node, OVSSwitch
 from mininet.link import Intf
 from mininet.log import info, error, warn, debug
 from mininet.moduledeps import pathCheck
+from mininet.clean import addCleanupCallback, sh
 
 from mnsec.util import makeIntfSingle
+
+
+def cleanup():
+    info("*** Cleaning up Linux bridges\n")
+    bridges = sh("brctl show | tail +2 | cut -f1").splitlines()
+    for br in bridges:
+        sh(f"ip link set down {br} && brctl delbr {br}")
+
+
+addCleanupCallback(cleanup)
+
 
 class Host( Node ):
     """Mininet-Sec host."""
     pass
+
 
 class IPTablesFirewall( Node ):
     "A Node with IPTables Linux Firewall."

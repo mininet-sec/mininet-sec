@@ -2,7 +2,18 @@
 
 ## [UNRELEASED] - Under development
 
-- TODO
+- Enhancements on the topology component for loading topology from YAML files
+- Kubernetes backend was refactored to leverage a Kubernetes Proxy being developed on the context of HackInSDN project, which will allow fine-grained control about Pods being created via Mininet-Sec as well as it will eliminate the requirement of Kube config on the Mininet-Sec pod
+- Isolating management IP address from Pods created via Mininet-Sec for a `mgmt` Linux network namespace in order to provide more isolation from th Kubernetes Pod network (not having the kubernetes pod network is not an option, otherwise we cannot create the VXLAN tunnels)
+- Added support for L2TP tunnels to provide connectivity with Pods and changing this protocol to be the default option to allow interconnecting with Pod containers with old software (VXLAN was introduced around 2014)
+- Enhance `examples/` with many usage examples and use cases
+- Refactor Docker image to include new tools
+- Routing Helper component now adds a default route with next hop being a null interface. This was necessary to allow running spoofed network tests in scenarios where the host server applies loose RPF check on Linux Kernel.
+- Adding Scripts to allow running real servers in addition to Simulated services. Currently we are supporting Apache2 (HTTP and HTTPS), OpenSSH (SSH) and Dovecot (IMAP, POP3, IMAPS, POP3S).
+- Allow multiple xterm sessions simultaneously for the same host
+- Fix server disconnected events for Xterm to allow closing the Browser tab and also finishing the xterm socketio session, as well as allowing the user to hit CTRL+D and closing the tab
+- Change the API Server startup order to allow a Loading message prior to the topology being actually available
+- Change the Topology visualization to allow creating the groups from python topology setup (`group` attribute for Hosts and Switches)
 
 ## [1.0.0] - 2024-09-16
 

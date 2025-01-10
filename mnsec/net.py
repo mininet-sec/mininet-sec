@@ -19,10 +19,12 @@ from time import sleep
 from contextlib import redirect_stdout
 from io import StringIO
 from subprocess import call
+import yaml
 
 from mininet.net import Mininet, MininetWithControlNet
 from mininet.node import OVSSwitch
 from mininet.log import info, error, output, warn, debug
+from mininet.topo import Topo
 from mininet.util import quietRun
 from mininet import cli, util
 
@@ -31,8 +33,64 @@ from mnsec.apps.app_manager import AppManager
 from mnsec.nodelib import IPTablesFirewall, Host
 from mnsec.api_server import APIServer
 from mnsec.k8s import K8sPod
-from mnsec.link import VxLanLink
+from mnsec.link import VxLanLink, L2tpLink
 
+from mininet.node import ( CPULimitedHost, Controller, OVSController,
+                           Ryu, NOX, RemoteController,
+                           DefaultController, NullController,
+                           UserSwitch, OVSSwitch, OVSBridge,
+                           IVSSwitch )
+from mininet.nodelib import LinuxBridge
+from mininet.link import Link, TCLink, TCULink, OVSLink
+from mininet.topo import ( SingleSwitchTopo, LinearTopo,
+                           SingleSwitchReversedTopo, MinimalTopo )
+from mininet.topolib import TreeTopo, TorusTopo
+from mininet.util import specialClass
+
+# built in topologies, created only when run
+TOPODEF = 'minimal'
+TOPOS = { 'minimal': MinimalTopo,
+          'linear': LinearTopo,
+          'reversed': SingleSwitchReversedTopo,
+          'single': SingleSwitchTopo,
+          'tree': TreeTopo,
+          'torus': TorusTopo }
+
+SWITCHDEF = 'default'
+SWITCHES = { 'user': UserSwitch,
+             'ovs': OVSSwitch,
+             'ovsbr' : OVSBridge,
+             # Keep ovsk for compatibility with 2.0
+             'ovsk': OVSSwitch,
+             'ivs': IVSSwitch,
+             'lxbr': LinuxBridge,
+             'default': OVSSwitch }
+
+HOSTDEF = 'proc'
+HOSTS = { 'proc': Host,
+          'rt': specialClass( CPULimitedHost, defaults=dict( sched='rt' ) ),
+          'cfs': specialClass( CPULimitedHost, defaults=dict( sched='cfs' ) ),
+          'default': Host,
+          'k8spod': K8sPod,
+}
+
+CONTROLLERDEF = 'default'
+CONTROLLERS = { 'ref': Controller,
+                'ovsc': OVSController,
+                'nox': NOX,
+                'remote': RemoteController,
+                'ryu': Ryu,
+                'default': DefaultController,  # Note: overridden below
+                'none': NullController }
+
+LINKDEF = 'default'
+LINKS = { 'default': Link,  # Note: overridden below
+          'tc': TCLink,
+          'tcu': TCULink,
+          'ovs': OVSLink,
+          'vxlan': VxLanLink,
+          'l2tp': L2tpLink,
+}
 
 VERSION = "0.1.0"
 
@@ -42,7 +100,7 @@ class Mininet_sec(Mininet):
     """Emulation platform for cybersecurity tools in programmable networks"""
 
     def __init__(
-        self, workDir="/tmp/mnsec", apps="", enable_api=True,
+        self, topoFile="", workDir="/tmp/mnsec", apps="", enable_api=True,
         enable_sflow=False, sflow_collector="127.0.0.1:6343", sflow_sampling=64, sflow_polling=10,
         **kwargs,
     ):
@@ -64,7 +122,11 @@ class Mininet_sec(Mininet):
         self.run_api_server = enable_api
 
         self.cleanups = []
+        self.topo_dict = {}
         self.cli = None
+
+        if topoFile:
+            kwargs["topo"] = self.buildTopoFromFile(topoFile)
 
         if self.run_api_server:
             self.api_server = APIServer(self)
@@ -73,9 +135,84 @@ class Mininet_sec(Mininet):
             self.api_server = None
 
         kwargs.setdefault("host", Host)
-        # ipBase: using /24 instead of /8 to reduce chances of conflict
-        kwargs.setdefault("ipBase", "10.0.0.0/24")
+        # changing ipBase to reduce chances of conflict
+        kwargs.setdefault("ipBase", "10.255.0.0/16")
         Mininet.__init__(self, **kwargs)
+
+    def buildTopoFromFile(self, topoFile):
+        """Build topology from YAML file"""
+        try:
+            self.topo_dict = yaml.load(open(topoFile), Loader=yaml.Loader)
+        except Exception as exc:
+            raise ValueError(f"Invalid topology file. Error reading topology: {exc}")
+        defaults = self.topo_dict.get("defaults")
+        topo = Topo()
+        for host, host_opts in self.topo_dict.get("hosts", {}).items():
+            cls = HOSTS[host_opts.get("kind", defaults.get("hosts_kind", HOSTDEF))]
+            topo.addHost(host, cls=cls, **host_opts)
+        for switch, sw_opts in self.topo_dict.get("switches", {}).items():
+            cls = SWITCHES[sw_opts.get("kind", defaults.get("switches_kind", SWITCHDEF))]
+            topo.addSwitch(switch, cls=cls, **sw_opts)
+        for link in self.topo_dict.get("links", {}):
+            cls = LINKS[link.get("kind", defaults.get("links_kind", LINKDEF))]
+            node1 = link.pop("node1")
+            node2 = link.pop("node2")
+            topo.addLink(node1, node2, cls=cls, **link)
+        return topo
+
+    def buildFromTopo( self, topo=None ):
+        """Build mininet from a topology object
+           At the end of this function, everything should be connected
+           and up."""
+
+        # Possibly we should clean up here and/or validate
+        # the topo
+        if self.cleanup:
+            pass
+
+        info( '*** Creating network\n' )
+
+        if not self.controllers and self.controller:
+            # Add a default controller
+            info( '*** Adding controller\n' )
+            classes = self.controller
+            if not isinstance( classes, list ):
+                classes = [ classes ]
+            for i, cls in enumerate( classes ):
+                # Allow Controller objects because nobody understands partial()
+                if isinstance( cls, Controller ):
+                    self.addController( cls )
+                else:
+                    self.addController( 'c%d' % i, cls )
+
+        info( '*** Adding hosts:\n' )
+        for hostName in topo.hosts():
+            self.addHost( hostName, **topo.nodeInfo( hostName ) )
+            info( hostName + ' ' )
+
+        info( '\n*** Running hosts post-startup:\n ')
+        for host in self.hosts:
+            if hasattr( host, 'post_startup' ):
+                info( host.name + ' ' )
+                host.post_startup()
+
+        info( '\n*** Adding switches:\n' )
+        for switchName in topo.switches():
+            # A bit ugly: add batch parameter if appropriate
+            params = topo.nodeInfo( switchName)
+            cls = params.get( 'cls', self.switch )
+            if hasattr( cls, 'batchStartup' ):
+                params.setdefault( 'batch', True )
+            self.addSwitch( switchName, **params )
+            info( switchName + ' ' )
+
+        info( '\n*** Adding links:\n' )
+        for srcName, dstName, params in topo.links(
+                sort=True, withInfo=True ):
+            self.addLink( **params )
+            info( '(%s, %s) ' % ( srcName, dstName ) )
+
+        info( '\n' )
 
     def start(self):
         """Start nodes, apps and call Mininet to finish the startup."""
@@ -151,6 +288,9 @@ class Mininet_sec(Mininet):
 
         Mininet.stop(self)
 
+        info("*** Cleanup K8s Pods\n")
+        K8sPod.wait_deleted()
+
     def addFirewall( self, name='fw0', **params):
         """Add a Firewall to the Mininet-Sec network
            name: name of Firewall node
@@ -186,7 +326,7 @@ class Mininet_sec(Mininet):
                 params["port2"] = newPort
 
         if isinstance(node1, K8sPod) or isinstance(node2, K8sPod):
-            params["cls"] = VxLanLink
+            params["cls"] = L2tpLink
 
         link = Mininet.addLink(self, node1, node2, **params)
 
@@ -244,6 +384,10 @@ class Mininet_sec(Mininet):
                             self[hop].cmd(f"ip route add {route}")
                             known_routes[hop].append(route)
                         prev_hop = hop
+            # add a generic default route with loopback next-hop and low
+            # priority (high metric). This will help packets go through in case
+            # RPF is configured in loose mode (net.ipv4.conf.all.rp_filter=1)
+            self[node1].cmd(f"ip route add default dev lo metric 4294967295")
 
     def run_cli(self, cmd):
         """Run on CLI if available."""

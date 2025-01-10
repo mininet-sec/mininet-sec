@@ -3,14 +3,12 @@
 "Setuptools params"
 
 from setuptools import setup, find_packages
-from os.path import join
+import glob
 
 # Get version number from source tree
 #import sys
 #sys.path.append( '.' )
 VERSION = "0.1.0"
-
-scripts = [ join( 'bin', filename ) for filename in [ 'mnsec', 'mnsecx' ] ]
 
 modname = distname = 'mnsec'
 
@@ -40,7 +38,7 @@ setup(
     keywords='networking emulator cybersecurity',
     license='GPL-3',
     install_requires=install_requires,
-    scripts=scripts,
+    scripts=glob.glob("bin/*"),
     packages=["mnsec"],
     package_data={"mnsec": ["assets/*", "templates/*", "apps/*", "server/*"]},
 )

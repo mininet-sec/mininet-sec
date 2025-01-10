@@ -1,4 +1,4 @@
-FROM debian:stable
+FROM debian:bookworm-slim
 
 RUN set -x \
  && export DEBIAN_FRONTEND=noninteractive \
