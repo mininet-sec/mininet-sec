@@ -379,7 +379,7 @@ class K8sPod(Node):
             proxy_token = os.environ.get("K8S_PROXY_TOKEN", pod_token)
             proxy_ns = os.environ.get("K8S_PROXY_NAMESPACE", pod_namespace)
             proxy_host = os.environ.get("K8S_PROXY_HOST")
-            proxy_port = os.environ.get("K8S_PROXY_PORT")
+            proxy_port = os.environ.get("K8S_PROXY_PORT", 443)
             if any([
                 not os.path.exists(proxy_cert_f),
                 not proxy_ns,
