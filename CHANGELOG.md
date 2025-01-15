@@ -2,7 +2,7 @@
 
 ## [UNRELEASED] - Under development
 
-- TODO
+- Added feature to open host terminal based on double check in the Mininet-Sec Web UI
 
 ## [1.1.0] - 2025-01-10
 
