@@ -147,6 +147,19 @@ class APIServer:
                     item["style"]["target-label"] = "" if show == "disabled" else "data(tlabel)"
             return self.default_stylesheet
 
+        clientside_callback(
+            """
+            function(input1) {
+              cy.on('dblclick', function(evt) {
+                window.open('/xterm/' + evt.target.id(), '_blank');
+              });
+              return dash_clientside.no_update;
+            }
+            """,
+            Output('cytoscape', 'id'),
+            Input('cytoscape', 'id')
+        )
+
         self.server.add_url_rule("/topology", None, self.get_topology, methods=["GET"])
         self.server.add_url_rule("/add_node", None, self.add_node, methods=["POST"])
         self.server.add_url_rule("/add_link", None, self.add_link, methods=["POST"])
