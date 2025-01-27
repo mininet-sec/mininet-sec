@@ -3,6 +3,8 @@ name: Docker Image CI
 on:
   push:
     branches: [ "main" ]
+    tags:
+      - "*.*.*"
 
 jobs:
 
@@ -11,6 +13,22 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    # https://docs.docker.com/build/ci/github-actions/manage-tags-labels/
+    - name: Docker meta
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        # list of Docker images to use as base name for tags
+        images: |
+          hackinsdn/mininet-sec
+        # generate Docker tags based on the following events/attributes
+        tags: |
+          type=ref,event=branch
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=semver,pattern={{major}}
+          type=sha
+
     # https://github.com/docker/setup-buildx-action
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
@@ -26,5 +44,6 @@ jobs:
     - name: Build and push
       uses: docker/build-push-action@v6
       with:
-        push: true
-        tags: hackinsdn/mininet-sec:latest
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
