@@ -5,7 +5,7 @@ RUN set -x \
  && apt-get update \
  && apt-get install -y --no-install-recommends \
 		iproute2 net-tools iputils-ping \
-		procps curl jq \
+		socat procps curl jq \
                 python3-minimal libpython3-stdlib \
  && rm -rf /var/lib/apt/lists/*
 
