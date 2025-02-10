@@ -1,3 +1,5 @@
+[![ci-badge]][ci-link]
+
 .. raw:: html
 
   <div align="center">
@@ -135,3 +137,6 @@ Many parts of the code here were inspired or directly derivated from great proje
 Mini-NDN (https://github.com/named-data/mini-ndn/), Mininet-WiFi 
 (https://github.com/intrig-unicamp/mininet-wifi/) and, of course, Mininet
 (https://github.com/mininet/mininet).
+
+[ci-badge]: ../../actions/workflows/docker-image.yml/badge.svg
+[ci-link]: ../../actions/workflows/docker-image.yml
