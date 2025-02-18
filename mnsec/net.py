@@ -54,7 +54,8 @@ TOPOS = { 'minimal': MinimalTopo,
           'reversed': SingleSwitchReversedTopo,
           'single': SingleSwitchTopo,
           'tree': TreeTopo,
-          'torus': TorusTopo }
+          'torus': TorusTopo,
+}
 
 SWITCHDEF = 'default'
 SWITCHES = { 'user': UserSwitch,
@@ -65,7 +66,8 @@ SWITCHES = { 'user': UserSwitch,
              'ivs': IVSSwitch,
              'lxbr': LinuxBridge,
              'nettap': NetworkTAP,
-             'default': OVSSwitch }
+             'default': OVSSwitch,
+}
 
 HOSTDEF = 'proc'
 HOSTS = { 'proc': Host,
@@ -83,7 +85,8 @@ CONTROLLERS = { 'ref': Controller,
                 'remote': RemoteController,
                 'ryu': Ryu,
                 'default': DefaultController,  # Note: overridden below
-                'none': NullController }
+                'none': NullController,
+}
 
 LINKDEF = 'default'
 LINKS = { 'default': Link,  # Note: overridden below
@@ -147,12 +150,14 @@ class Mininet_sec(Mininet):
             self.topo_dict = yaml.load(open(topoFile), Loader=yaml.Loader)
         except Exception as exc:
             raise ValueError(f"Invalid topology file. Error reading topology: {exc}")
-        defaults = self.topo_dict.get("defaults")
+        defaults = self.topo_dict.get("defaults", {})
         topo = Topo()
-        for host, host_opts in self.topo_dict.get("hosts", {}).items():
+        for host in self.topo_dict.get("hosts", {}):
+            host_opts = self.topo_dict["hosts"][host] or {}
             cls = HOSTS[host_opts.get("kind", defaults.get("hosts_kind", HOSTDEF))]
             topo.addHost(host, cls=cls, **host_opts)
-        for switch, sw_opts in self.topo_dict.get("switches", {}).items():
+        for switch in self.topo_dict.get("switches", {}):
+            sw_opts = self.topo_dict["switches"][switch] or {}
             cls = SWITCHES[sw_opts.get("kind", defaults.get("switches_kind", SWITCHDEF))]
             topo.addSwitch(switch, cls=cls, **sw_opts)
         for link in self.topo_dict.get("links", {}):
