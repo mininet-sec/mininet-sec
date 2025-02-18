@@ -30,7 +30,7 @@ from mininet import cli, util
 
 import mnsec.apps.all
 from mnsec.apps.app_manager import AppManager
-from mnsec.nodelib import IPTablesFirewall, Host
+from mnsec.nodelib import IPTablesFirewall, Host, NetworkTAP
 from mnsec.api_server import APIServer
 from mnsec.k8s import K8sPod
 from mnsec.link import VxLanLink, L2tpLink
@@ -64,6 +64,7 @@ SWITCHES = { 'user': UserSwitch,
              'ovsk': OVSSwitch,
              'ivs': IVSSwitch,
              'lxbr': LinuxBridge,
+             'nettap': NetworkTAP,
              'default': OVSSwitch }
 
 HOSTDEF = 'proc'
@@ -72,6 +73,7 @@ HOSTS = { 'proc': Host,
           'cfs': specialClass( CPULimitedHost, defaults=dict( sched='cfs' ) ),
           'default': Host,
           'k8spod': K8sPod,
+          'iptables': IPTablesFirewall,
 }
 
 CONTROLLERDEF = 'default'
