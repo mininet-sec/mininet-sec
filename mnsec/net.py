@@ -140,6 +140,7 @@ class Mininet_sec(Mininet):
             self.api_server = None
 
         kwargs.setdefault("host", Host)
+        kwargs.setdefault("switch", OVSSwitch)
         # changing ipBase to reduce chances of conflict
         kwargs.setdefault("ipBase", "10.255.0.0/16")
         Mininet.__init__(self, **kwargs)
