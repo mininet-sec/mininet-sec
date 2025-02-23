@@ -42,6 +42,7 @@ class K8sPod(Node):
     pod_name = None
     pod_uid = None
     node_affinity = []
+    display_image = "computer-k8s.png"
 
     def __init__(
         self,
