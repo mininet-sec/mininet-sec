@@ -169,7 +169,7 @@ class APIServer:
         elements = []
         groups = {}
         for host in self.mnsec.hosts:
-            elements.append({"data": {"id": host.name, "label": host.name, "type": "host", "url": get_asset_url(getattr(host, "display_name", "computer.png"))}, "classes": "rectangle"})
+            elements.append({"data": {"id": host.name, "label": host.name, "type": "host", "url": get_asset_url(getattr(host, "display_image", "computer.png"))}, "classes": "rectangle"})
             # setup groups
             group = host.params.get("group")
             if not group:
@@ -181,7 +181,7 @@ class APIServer:
             elements[-1]["data"]["parent"] = f"group-{group_id}"
         for switch in self.mnsec.switches:
             dpid = ":".join(textwrap.wrap(getattr(switch, "dpid", "0000000000000000"), 2))
-            elements.append({"data": {"id": switch.name, "label": switch.name, "type": "switch", "dpid": dpid, "url": get_asset_url(getattr(switch, "display_name", "switch.png"))}, "classes": "rectangle" })
+            elements.append({"data": {"id": switch.name, "label": switch.name, "type": "switch", "dpid": dpid, "url": get_asset_url(getattr(switch, "display_image", "switch.png"))}, "classes": "rectangle" })
             # setup groups
             group = switch.params.get("group")
             if not group:
