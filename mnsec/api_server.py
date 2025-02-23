@@ -307,6 +307,15 @@ class APIServer:
                     'text-valign': 'top',
                 }
             },
+            {
+                'selector': ':selected',
+                'style': {
+                  'background-color': 'SteelBlue',
+                  'line-color': 'black',
+                  'target-arrow-color': 'black',
+                  'source-arrow-color': 'black'
+                }
+            },
         ]
 
         self.app.layout = html.Div([
