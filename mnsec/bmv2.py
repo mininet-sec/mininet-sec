@@ -106,6 +106,7 @@ class Bmv2Switch(Switch):
     # method, so the mn process would hang after clean-up since Bmv2 would still
     # be running.
     mininet_exception = multiprocessing.Value('i', 0)
+    display_image = "switch-p4.png"
 
     def __init__(self, name, json=None, debugger=False, loglevel="warn",
                  elogger=False, grpcport=None, cpuport=255, notifications=False,

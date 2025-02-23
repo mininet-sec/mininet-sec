@@ -7,7 +7,9 @@ import os
 import re
 import traceback
 
-from mininet.node import Node, OVSSwitch
+from mininet.nodelib import LinuxBridge as MN_Lxbr
+from mininet.node import Node
+from mininet.node import OVSSwitch as MN_OVS
 from mininet.link import Intf
 from mininet.log import info, error, warn, debug
 from mininet.moduledeps import pathCheck
@@ -25,14 +27,24 @@ def cleanup():
 
 addCleanupCallback(cleanup)
 
+class OVSSwitch(MN_OVS):
+    """Mininet-Sec openvswitch."""
+    display_image = "switch-of.png"
+
 
 class Host( Node ):
     """Mininet-Sec host."""
-    pass
+    display_image = "computer.png"
+
+
+class LinuxBridge(MN_Lxbr):
+    """Mininet-Sec linux bridge."""
+    display_image = "switch.png"
 
 
 class IPTablesFirewall( Node ):
     "A Node with IPTables Linux Firewall."
+    display_image = "firewall.png"
 
     def __init__( self, name, rules_v4="", rules_v6="", **params):
         """Start IPTables firewall
@@ -141,6 +153,8 @@ class NetworkTAP( OVSSwitch ):
           is provided, then a dummy interface will be created on the
           format XXX-eth1002 (XXX is the node name)
     """
+    display_image = "switch-tap.png"
+
     def __init__(self, name, port_a=1, port_b=2, mon_a=None, mon_b=None, mon_together=False, **kwargs):
         """Wrapper to capture the port A and B, and monitor"""
         self.port_a = port_a
