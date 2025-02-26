@@ -169,7 +169,10 @@ class APIServer:
         elements = []
         groups = {}
         for host in self.mnsec.hosts:
-            elements.append({"data": {"id": host.name, "label": host.name, "type": "host", "url": get_asset_url(getattr(host, "display_image", "computer.png"))}, "classes": "rectangle"})
+            img_url = host.params.get("img_url")
+            if not img_url:
+                img_url = get_asset_url(getattr(host, "display_image", "computer.png"))
+            elements.append({"data": {"id": host.name, "label": host.name, "type": "host", "url": img_url}, "classes": "rectangle"})
             # setup groups
             group = host.params.get("group")
             if not group:
@@ -180,8 +183,11 @@ class APIServer:
                 groups[group] = group_id
             elements[-1]["data"]["parent"] = f"group-{group_id}"
         for switch in self.mnsec.switches:
+            img_url = switch.params.get("img_url")
+            if not img_url:
+                img_url = get_asset_url(getattr(switch, "display_image", "switch.png"))
             dpid = ":".join(textwrap.wrap(getattr(switch, "dpid", "0000000000000000"), 2))
-            elements.append({"data": {"id": switch.name, "label": switch.name, "type": "switch", "dpid": dpid, "url": get_asset_url(getattr(switch, "display_image", "switch.png"))}, "classes": "rectangle" })
+            elements.append({"data": {"id": switch.name, "label": switch.name, "type": "switch", "dpid": dpid, "url": img_url}, "classes": "rectangle" })
             # setup groups
             group = switch.params.get("group")
             if not group:
