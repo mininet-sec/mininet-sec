@@ -249,10 +249,16 @@ class APIServer:
         styles = {
             "json-output": {
                 "overflowY": "scroll",
-                "height": "calc(50% - 25px)",
-                "border": "thin lightgrey solid",
+                "border": "thin lightgray solid",
+                "height": "100%",
             },
             "tab": {"height": "calc(98vh - 115px)"},
+            "full-height": {
+                "height": "calc(100% - 115px)",
+            },
+            "half-height": {
+                "height": "calc(50vh - 10px)",
+            },
         }
         self.default_stylesheet = [
             # Group selectors
@@ -267,8 +273,10 @@ class APIServer:
                 'selector': 'edge',
                 'style': {
                     #'label': 'data(label)',
-                    'source-label': 'data(slabel)',
-                    'target-label': 'data(tlabel)',
+                    #'source-label': 'data(slabel)',
+                    'source-label': '',
+                    #'target-label': 'data(tlabel)',
+                    'target-label': '',
                     'text-wrap': 'wrap',
                     'color': '#000',
                     'font-size': '10px',
@@ -311,15 +319,19 @@ class APIServer:
                 'style': {
                     'text-halign': 'center',
                     'text-valign': 'top',
+                    'background-color': '#F5F5F5',
                 }
             },
             {
                 'selector': ':selected',
                 'style': {
-                  'background-color': 'SteelBlue',
-                  'line-color': 'black',
+                  'background-color': '#F5F5F5',
+                  'line-color': '#505050',
                   'target-arrow-color': 'black',
-                  'source-arrow-color': 'black'
+                  'source-arrow-color': 'black',
+                  'border-width': 3,
+                  'border-color': '#505050',
+                  #'border-color': 'SteelBlue',
                 }
             },
         ]
@@ -350,20 +362,68 @@ class APIServer:
                         id="tabs",
                         children=[
                             dcc.Tab(
-                                label="Node/Link Data",
+                                label="Settings & Node/Link Data",
                                 children=[
                                     html.Div(
                                         style=styles["tab"],
                                         children=[
-                                            html.P("Node Data JSON:"),
-                                            html.Pre(
-                                                id="tap-node-data-json-output",
-                                                style=styles["json-output"],
-                                            ),
-                                            html.P("Edge Data JSON:"),
-                                            html.Pre(
-                                                id="tap-edge-data-json-output",
-                                                style=styles["json-output"],
+                                            html.Div(
+                                                children=[
+                                                    html.Div(
+                                                        style=styles["half-height"],
+                                                        children=[
+                                                            html.I("Change topology layout:"),
+                                                            html.Br(),
+                                                            dcc.Dropdown(
+                                                                id="dropdown-update-layout",
+                                                                value="cose",
+                                                                clearable=False,
+                                                                options=[
+                                                                    {"label": name.capitalize(), "value": name}
+                                                                    for name in ["grid", "random", "circle", "cose", "concentric"]
+                                                                ],
+                                                            ),
+                                                            html.Br(),
+                                                            html.I("Show interface names on links:"),
+                                                            dcc.RadioItems(['enabled', 'disabled'], 'disabled', id="show-interface-name"),
+                                                            html.Br(),
+                                                            html.I("Change node data:"),
+                                                            html.Br(),
+                                                            html.Div(id="change-node-data", hidden=True, children=[
+                                                                html.Pre(id='change-node-id'),
+                                                                'Node Label:',
+                                                                dcc.Input(id='input-node-label', type='text', debounce=True, value="")
+                                                            ])
+                                                        ],
+                                                    ),
+                                                    html.Div(
+                                                        style=styles["half-height"],
+                                                        children=[
+                                                            html.Div(
+                                                                className="six columns",
+                                                                style=styles["full-height"],
+                                                                children=[
+                                                                        html.P("Node Data JSON:"),
+                                                                        html.Pre(
+                                                                            id="tap-node-data-json-output",
+                                                                            style=styles["json-output"],
+                                                                        ),
+                                                                ],
+                                                            ),
+                                                            html.Div(
+                                                                className="six columns",
+                                                                style=styles["full-height"],
+                                                                children=[
+                                                                        html.P("Edge Data JSON:"),
+                                                                        html.Pre(
+                                                                            id="tap-edge-data-json-output",
+                                                                            style=styles["json-output"],
+                                                                        ),
+                                                                ],
+                                                            ),
+                                                        ],
+                                                    ),
+                                                ],
                                             ),
                                         ],
                                     )
@@ -382,38 +442,6 @@ class APIServer:
                                                 id="console-cmd-result",
                                                 style=styles["json-output"],
                                             ),
-                                        ],
-                                    )
-                                ],
-                            ),
-                            dcc.Tab(
-                                label="Settings",
-                                children=[
-                                    html.Div(
-                                        style=styles["tab"],
-                                        children=[
-                                            html.I("Change topology layout:"),
-                                            html.Br(),
-                                            dcc.Dropdown(
-                                                id="dropdown-update-layout",
-                                                value="cose",
-                                                clearable=False,
-                                                options=[
-                                                    {"label": name.capitalize(), "value": name}
-                                                    for name in ["grid", "random", "circle", "cose", "concentric"]
-                                                ],
-                                            ),
-                                            html.Br(),
-                                            html.I("Show interface names on links:"),
-                                            dcc.RadioItems(['enabled', 'disabled'], 'enabled', id="show-interface-name"),
-                                            html.Br(),
-                                            html.I("Change node data:"),
-                                            html.Br(),
-                                            html.Div(id="change-node-data", hidden=True, children=[
-                                                html.Pre(id='change-node-id'),
-                                                'Node Label:',
-                                                dcc.Input(id='input-node-label', type='text', debounce=True, value="")
-                                            ])
                                         ],
                                     )
                                 ],
