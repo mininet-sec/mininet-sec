@@ -26,6 +26,14 @@ K8S_TOKEN_FILE = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 K8S_NAMESPACE_FILE = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
 K8S_CERT_FILE = "/var/run/secrets/mnsec/proxy.crt"
 
+DISPLAY_IMG = {
+    "hackinsdn/kytos": "server_kytos.png",
+    "hackinsdn/suricata": "server_suricata.png",
+    "hackinsdn/misp": "server_misp.png",
+    "hackinsdn/secflood": "server_secflood.png",
+    "hackinsdn/zeek": "server_zeek.png",
+}
+
 
 def parse_token(token):
     try:
@@ -42,6 +50,7 @@ class K8sPod(Node):
     pod_name = None
     pod_uid = None
     node_affinity = []
+    display_image = "computer-k8s.png"
 
     def __init__(
         self,
@@ -84,6 +93,9 @@ class K8sPod(Node):
         self.waitRunning = waitRunning
         if self.k8s_publish and not self.waitRunning:
             self.waitRunning = True
+        img = DISPLAY_IMG.get(image.rsplit(":", 1)[0])
+        if img:
+            self.display_image = img
         Node.__init__(self, name, **params)
 
     def parse_publish(self, publish_orig):
