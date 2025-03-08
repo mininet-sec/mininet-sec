@@ -18,6 +18,7 @@ hosts:
   r2:
     kind: k8spod
     image: hackinsdn/debian:latest
+    url_img: /assets/debian-server.png
 switches:
   s1:
     kind: lxbr
