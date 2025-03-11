@@ -32,10 +32,12 @@ class APIServer:
         self.port = port
 
         # Analytics measurements
-        self.analytics_script = os.getenv("ANALYTICS_SCRIPT")
+        self.gtag = os.getenv("GTAG")
         external_scripts = []
-        if os.getenv("ANALYTICS_JSFILE"):
-            external_scripts.append(os.getenv("ANALYTICS_JSFILE"))
+        if self.gtag:
+            external_scripts.append(
+                f"https://www.googletagmanager.com/gtag/js?id={self.gtag}"
+            )
 
         self.server = flask.Flask(__name__)
         self.app = Dash(
@@ -171,13 +173,18 @@ class APIServer:
             Input('cytoscape', 'id')
         )
 
-        if self.analytics_script:
+        if self.gtag:
             clientside_callback(
                 """
                 function(input1) {
-                  {}
+                  window.dataLayer = window.dataLayer || [];
+                  function gtag () {
+                    dataLayer.push(arguments);
+                  };
+                  gtag('js',new Date());
+                  gtag('config', '%s');
                 }
-                """.format(self.analytics_script),
+                """ % (self.gtag),
                 Output('cytoscape', 'id'),
                 Input('cytoscape', 'id')
             )
