@@ -1,7 +1,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Mininet-Sec</title>
+    <title>mnsec xterm - {{host}}</title>
     <style>
       html {
         font-family: arial;
@@ -145,5 +145,11 @@
         socket.emit('disconnect', {'host': "{{host}}"});
       }
     </script>
+    {% if gtag %}
+    <script async src="https://www.googletagmanager.com/gtag/js?id={{gtag}}"></script>
+    <script>
+      window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);};gtag('js',new Date());gtag('config', '{{gtag}}');
+    </script>
+    {% endif %}
   </body>
 </html>

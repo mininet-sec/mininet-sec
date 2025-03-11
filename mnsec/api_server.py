@@ -43,6 +43,7 @@ class APIServer:
         self.app = Dash(
             __name__,
             server=self.server,
+            update_title="Mininet-Sec Updating...",
             suppress_callback_exceptions=True,
             external_scripts = external_scripts or None
         )
@@ -160,34 +161,27 @@ class APIServer:
                     item["style"]["target-label"] = "" if show == "disabled" else "data(tlabel)"
             return self.default_stylesheet
 
+        gtag_str = (
+            "window.dataLayer = window.dataLayer || [];"
+            "function gtag () {"
+            "  dataLayer.push(arguments);"
+            "};"
+            "gtag('js',new Date());"
+            f"gtag('config', '{self.gtag}');"
+        ) if self.gtag else ""
         clientside_callback(
             """
             function(input1) {
               cy.on('dblclick', function(evt) {
                 window.open('/xterm/' + evt.target.id(), '_blank');
               });
+              %s
               return dash_clientside.no_update;
             }
-            """,
+            """ % (gtag_str),
             Output('cytoscape', 'id'),
             Input('cytoscape', 'id')
         )
-
-        if self.gtag:
-            clientside_callback(
-                """
-                function(input1) {
-                  window.dataLayer = window.dataLayer || [];
-                  function gtag () {
-                    dataLayer.push(arguments);
-                  };
-                  gtag('js',new Date());
-                  gtag('config', '%s');
-                }
-                """ % (self.gtag),
-                Output('cytoscape', 'id'),
-                Input('cytoscape', 'id')
-            )
 
         self.server.add_url_rule("/topology", None, self.get_topology, methods=["GET"])
         self.server.add_url_rule("/add_node", None, self.add_node, methods=["POST"])
@@ -651,7 +645,7 @@ class APIServer:
         """Open xterm for a node"""
         if not host or host not in self.mnsec:
             return flask.render_template("xterm_error.html", error=f"Invalid host={host}")
-        return flask.render_template("xterm.html", host=host)
+        return flask.render_template("xterm.html", host=host, gtag=self.gtag)
 
     def run_server(self):
         info(f"APIServer listening on port {self.listen}:{self.port}\n")
