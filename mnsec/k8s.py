@@ -88,6 +88,8 @@ class K8sPod(Node):
         self.k8s_args = args
         self.k8s_pod_ip = None
         self.k8s_env = env
+        if os.getenv("GTAG"):
+            self.k8s_env.append({"name": "GTAG", "value": os.getenv("GTAG")})
         self.k8s_publish = self.parse_publish(publish)
         self.port_forward = []
         self.waitRunning = waitRunning
