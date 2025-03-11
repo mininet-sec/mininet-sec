@@ -31,8 +31,19 @@ class APIServer:
         self.listen = listen
         self.port = port
 
+        # Analytics measurements
+        self.analytics_script = os.getenv("ANALYTICS_SCRIPT")
+        external_scripts = []
+        if os.getenv("ANALYTICS_JSFILE"):
+            external_scripts.append(os.getenv("ANALYTICS_JSFILE"))
+
         self.server = flask.Flask(__name__)
-        self.app = Dash(__name__, server=self.server, suppress_callback_exceptions=True)
+        self.app = Dash(
+            __name__,
+            server=self.server,
+            suppress_callback_exceptions=True,
+            external_scripts = external_scripts or None
+        )
         self.app.title = "Mininet-Sec"
         #self.server = make_server(listen, port, self.app.server, threaded=True, processes=0)
         self.socketio = SocketIO(self.server)
@@ -159,6 +170,17 @@ class APIServer:
             Output('cytoscape', 'id'),
             Input('cytoscape', 'id')
         )
+
+        if self.analytics_script:
+            clientside_callback(
+                """
+                function(input1) {
+                  {}
+                }
+                """.format(self.analytics_script),
+                Output('cytoscape', 'id'),
+                Input('cytoscape', 'id')
+            )
 
         self.server.add_url_rule("/topology", None, self.get_topology, methods=["GET"])
         self.server.add_url_rule("/add_node", None, self.add_node, methods=["POST"])
