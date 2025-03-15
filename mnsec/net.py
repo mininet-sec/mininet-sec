@@ -256,12 +256,32 @@ class Mininet_sec(Mininet):
         host.cmd(f"mkdir -p {homeDir}")
         return homeDir
 
+    def setupHostDNS(self, host):
+        """Configure node's resolv.conf DNS resolver from parameters:
+           dns_nameservers (str): space-separated list of DNS servers addresses
+           dns_extra_opts (str): extra options to be added to resolv.conf
+        """
+        host = host if not isinstance( host, str ) else self[ host ]
+        extra_opts = self.params.get("dns_extra_opts", "")
+        config = [
+            f"nameserver {server}"
+            for server in self.params.get("dns_nameservers", "").split()
+        ]
+        if extra_opts:
+            config.append(extra_opts)
+        conf_str = "\n".join(config)
+        conf_file = f"{host.params['homeDir']}/resolv.conf"
+        host.cmd(f"echo -e '{conf_str}' > {conf_file}", shell=True)
+        host.cmd(f"mount --bind {conf_file} /etc/resolv.conf")
+
+
     def startHost(self, host):
         """Start hosts."""
         if not host:
             return
         homeDir = self.setupHostHomeDir(host)
         host.cmd(f"export HOME={homeDir} && cd ~")
+        self.setupHostDNS(host)
         if hasattr(host, "start"):
             host.start()
 

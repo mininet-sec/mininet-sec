@@ -277,6 +277,9 @@ class K8sPod(Node):
             self.cmd(f"ip netns exec mgmt ip route add {route.strip()} dev eth0 scope link")
         for route in routes_global:
             self.cmd(f"ip netns exec mgmt ip route add {route.strip()} dev eth0 scope global")
+        # setup DNS for the mgmt namespace according to original Kubernetes config
+        self.cmd(f"mkdir -p /etc/netns/mgmt")
+        self.cmd(f"cat /etc/resolv.conf > /etc/netns/mgmt/resolv.conf")
 
     def setup_port_forward(self):
         """Create port forward for the pod."""
