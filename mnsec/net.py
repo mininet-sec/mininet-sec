@@ -284,6 +284,8 @@ class Mininet_sec(Mininet):
         self.setupHostDNS(host)
         if hasattr(host, "start"):
             host.start()
+        for cmd in host.params.get("postStart", []):
+            host.cmd(cmd)
 
     def enable_sflow(self):
         """Enable sflow on switches."""

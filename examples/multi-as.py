@@ -37,7 +37,7 @@ class NetworkTopo( Topo ):
         ####################
         r101 = self.addHost('r101', ip='10.10.0.1/24', mynetworks=[], group="AS100")
 
-        h101 = self.addHost('h101', ip='192.168.10.1/24', defaultRoute='via 192.168.10.254', group="AS100")
+        h101 = self.addHost('h101', ip='192.168.10.1/24', defaultRoute='via 192.168.10.254', group="AS100", dns_nameservers="172.16.50.3")
         h102 = self.addHost('h102', ip='192.168.10.2/24', defaultRoute='via 192.168.10.254', group="AS100")
         h103 = self.addHost('h103', ip='192.168.10.3/24', defaultRoute='via 192.168.10.254', group="AS100")
 
@@ -191,6 +191,14 @@ class NetworkTopo( Topo ):
         srv501 = self.addHost('srv501', ip='172.16.50.1/24', defaultRoute='via 172.16.50.254', apps=[{"name": "http", "port": 80}, {"name": "https", "port": 443}], group="AS500")
         srv502 = self.addHost('srv502', ip='172.16.50.2/24', defaultRoute='via 172.16.50.254', group="AS500")
         srv503 = self.addHost('srv503', ip='172.16.50.3/24', defaultRoute='via 172.16.50.254', group="AS500")
+        # setup dns services on this host
+        srv503.params["postStart"] = [
+            "service-mnsec-bind9.sh srv503 --start",
+            "service-mnsec-bind9.sh srv503 --enable-recursion",
+            "service-mnsec-bind9.sh srv503 --add-zone hackinsdn.com",
+            "service-mnsec-bind9.sh srv503 --add-entry hackinsdn.com \"iodine IN A 172.16.50.2\"",
+            "service-mnsec-bind9.sh srv503 --add-entry hackinsdn.com \"testetun IN NS iodine\"",
+        ]
 
         s501 = self.addSwitch('s501', cls=LinuxBridge, group="AS500")
 
