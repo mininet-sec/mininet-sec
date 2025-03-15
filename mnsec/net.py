@@ -262,10 +262,10 @@ class Mininet_sec(Mininet):
            dns_extra_opts (str): extra options to be added to resolv.conf
         """
         host = host if not isinstance( host, str ) else self[ host ]
-        extra_opts = self.params.get("dns_extra_opts", "")
+        extra_opts = host.params.get("dns_extra_opts", "")
         config = [
             f"nameserver {server}"
-            for server in self.params.get("dns_nameservers", "").split()
+            for server in host.params.get("dns_nameservers", "").split()
         ]
         if extra_opts:
             config.append(extra_opts)
