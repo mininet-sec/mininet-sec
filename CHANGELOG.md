@@ -3,6 +3,12 @@
 ## [UNRELEASED] - Under development
 
 - Added feature to open host terminal based on double check in the Mininet-Sec Web UI
+- Added script to setup DNS service based on bind9 (`service-mnsec-bind9.sh`), with options: enable the DNS server, enable recursion, add a zone, add entires to a zone
+- Fixed issue with Kubernetes terminals that could freeze/stop-working after a while
+- Added feature to display images for hosts, switches, Pods, etc
+- Added option to allow user to provide an URL with image to be displayed (`img_url`)
+- Added option to allow Mininet-Sec hosts to configure DNS resolvers (`dns_nameservers`)
+- Added option to allow run post startup commands (`postStart`)
 
 ## [1.1.0] - 2025-01-10
 
