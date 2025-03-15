@@ -277,6 +277,9 @@ class K8sPod(Node):
             self.cmd(f"ip netns exec mgmt ip route add {route.strip()} dev eth0 scope link")
         for route in routes_global:
             self.cmd(f"ip netns exec mgmt ip route add {route.strip()} dev eth0 scope global")
+        # setup DNS for the mgmt namespace according to original Kubernetes config
+        self.cmd(f"mkdir -p /etc/netns/mgmt")
+        self.cmd(f"cat /etc/resolv.conf > /etc/netns/mgmt/resolv.conf")
 
     def setup_port_forward(self):
         """Create port forward for the pod."""
@@ -318,6 +321,26 @@ class K8sPod(Node):
     def stop(self):
         """Stop the Pod."""
         self.terminate()
+
+    def cmd( self, *args, **kwargs ):
+        """Wrapper for Node.cmd to double check if shell is indeed alive."""
+        if self.shell and self.shell.poll() is None:
+            return Node.cmd(self, *args, **kwargs)
+
+        # restart shell: try to clean up first
+        for cleanUp_funcs in (
+            lambda: self.outToNode.pop(self.stdout.fileno(), None),
+            lambda: self.inToNode.pop(self.stdin.fileno(), None),
+            lambda: self.stdin.close(),
+            lambda: self.stdout.close(),
+            lambda: os.close(self.master),
+            lambda: os.close(self.slave),
+            lambda: self.shell.kill(),
+        ):
+            try: cleanUp_funcs()
+            except: continue
+        self.setup_shell()
+        return Node.cmd(self, *args, **kwargs)
 
     #def cmd(self, *args, **kwargs):
     #    """Send a command, wait for output, and return it."""

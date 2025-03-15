@@ -33,6 +33,10 @@ while [[ $# -gt 0 ]]; do
       ACTION=add-entry
       shift
       ;;
+    --enable-recursive)
+      ACTION=enable-recursive
+      shift
+      ;;
     -h|--help)
       ACTION=help
       shift
@@ -100,6 +104,12 @@ function add_zone(){
 	ZONE=$2
 	FILE=$3
 
+	# check if bind9 is running
+	if ! rndc status | grep -q "server is up and running"; then
+		echo "bind9 is not runnig! Please run --start first"
+		exit 0
+	fi
+
 	# check if zone name is valid
 	if ! echo "$ZONE" | egrep -q "^([a-zA-Z0-9-]+.)+[a-zA-Z0-9]$"; then
 		echo "Invalid Zone name: $ZONE"
@@ -115,17 +125,24 @@ function add_zone(){
 		cp $FILE $BASE_DIR/etc/bind/db.$ZONE
 	else
 		cp $BASE_DIR/etc/bind/$TEMPLATE $BASE_DIR/etc/bind/db.$ZONE
+
+		if [ $TEMPLATE = "db.local" ]; then
+			sed -i "s/localhost/$ZONE/g" $BASE_DIR/etc/bind/db.$ZONE
+		fi
+	fi
 cat >>$BASE_DIR/etc/bind/named.conf.local <<EOF
 zone "$ZONE" {
         type master;
         file "/etc/bind/db.$ZONE";
 };
 EOF
-		if [ $TEMPLATE = "db.local" ]; then
-			sed -i "s/localhost/$ZONE/g" $BASE_DIR/etc/bind/db.$ZONE
-		fi
-	fi
 	named-checkzone $ZONE $BASE_DIR/etc/bind/db.$ZONE
+
+	# add DNSSEC validation exception for this zone
+	if ! grep -q "validate-except" $BASE_DIR/etc/bind/named.conf.options; then
+		sed -i "/dnssec-validation/a\        validate-except {\n        };" $BASE_DIR/etc/bind/named.conf.options
+	fi
+	sed -i "/validate-except/a\           \"$ZONE\";" $BASE_DIR/etc/bind/named.conf.options
 }
 
 function add_entry(){
@@ -144,6 +161,17 @@ function add_entry(){
 	named-checkzone $ZONE $BASE_DIR/etc/bind/db.$ZONE
 }
 
+function enable_recursive(){
+	# check if bind9 is running
+	if ! rndc status | grep -q "server is up and running"; then
+		echo "bind9 is not runnig! Please run --start first"
+		exit 0
+	fi
+	echo "Enabling recursive queries"
+	sed -i "/recursion/d" $BASE_DIR/etc/bind/named.conf.options
+	sed -i "/listen-on-v6/a\        recursion yes;\n        allow-recursion { any; };" $BASE_DIR/etc/bind/named.conf.options
+}
+
 if [ "$ACTION" = "start" ]; then
   start
 elif [ "$ACTION" = "stop" ]; then
@@ -159,6 +187,9 @@ elif [ "$ACTION" = "add-reverse-zone" ]; then
 elif [ "$ACTION" = "add-entry" ]; then
   add_entry ${ORIG_ARGS[@]}
   reload
+elif [ "$ACTION" = "enable-recursive" ]; then
+  enable_recursive
+  reload
 else
   echo "USAGE: $0 NAME [OPTIONS]"
   echo ""
@@ -169,6 +200,7 @@ else
   echo "  --add-zone ...           Add direct zone (see more information below)"
   echo "  --add-reverse-zone ...   Add reverse zone (see more information below)"
   echo "  --add-entry ...          Add an entry to a zone (see more information below)"
+  echo "  --enable-recursive       Enable recursive query from any client"
   echo ""
   echo "--add-zone ZONE [FILE]"
   echo "  ZONE    FQDN (Full Qualified Domain Name) of the zone to be added. Example: xpto.com"
