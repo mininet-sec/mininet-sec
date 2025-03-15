@@ -322,6 +322,26 @@ class K8sPod(Node):
         """Stop the Pod."""
         self.terminate()
 
+    def cmd( self, *args, **kwargs ):
+        """Wrapper for Node.cmd to double check if shell is indeed alive."""
+        if self.shell and self.shell.poll() is None:
+            return Node.cmd(self, *args, **kwargs)
+
+        # restart shell: try to clean up first
+        for cleanUp_funcs in (
+            lambda: self.outToNode.pop(self.stdout.fileno(), None),
+            lambda: self.inToNode.pop(self.stdin.fileno(), None),
+            lambda: self.stdin.close(),
+            lambda: self.stdout.close(),
+            lambda: os.close(self.master),
+            lambda: os.close(self.slave),
+            lambda: self.shell.kill(),
+        ):
+            try: cleanUp_funcs()
+            except: continue
+        self.setup_shell()
+        return Node.cmd(self, *args, **kwargs)
+
     #def cmd(self, *args, **kwargs):
     #    """Send a command, wait for output, and return it."""
     #    verbose = kwargs.get("verbose", False)
