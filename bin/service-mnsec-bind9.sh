@@ -104,6 +104,12 @@ function add_zone(){
 	ZONE=$2
 	FILE=$3
 
+	# check if bind9 is running
+	if ! rndc status | grep -q "server is up and running"; then
+		echo "bind9 is not runnig! Please run --start first"
+		exit 0
+	fi
+
 	# check if zone name is valid
 	if ! echo "$ZONE" | egrep -q "^([a-zA-Z0-9-]+.)+[a-zA-Z0-9]$"; then
 		echo "Invalid Zone name: $ZONE"
@@ -119,17 +125,24 @@ function add_zone(){
 		cp $FILE $BASE_DIR/etc/bind/db.$ZONE
 	else
 		cp $BASE_DIR/etc/bind/$TEMPLATE $BASE_DIR/etc/bind/db.$ZONE
+
+		if [ $TEMPLATE = "db.local" ]; then
+			sed -i "s/localhost/$ZONE/g" $BASE_DIR/etc/bind/db.$ZONE
+		fi
+	fi
 cat >>$BASE_DIR/etc/bind/named.conf.local <<EOF
 zone "$ZONE" {
         type master;
         file "/etc/bind/db.$ZONE";
 };
 EOF
-		if [ $TEMPLATE = "db.local" ]; then
-			sed -i "s/localhost/$ZONE/g" $BASE_DIR/etc/bind/db.$ZONE
-		fi
-	fi
 	named-checkzone $ZONE $BASE_DIR/etc/bind/db.$ZONE
+
+	# add DNSSEC validation exception for this zone
+	if ! grep -q "validate-except" $BASE_DIR/etc/bind/named.conf.options; then
+		sed -i "/dnssec-validation/a\        validate-except {\n        };" $BASE_DIR/etc/bind/named.conf.options
+	fi
+	sed -i "/validate-except/a\           \"$ZONE\";" $BASE_DIR/etc/bind/named.conf.options
 }
 
 function add_entry(){
