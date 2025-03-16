@@ -198,10 +198,10 @@ class APIServer:
                 img_url = get_asset_url(getattr(host, "display_image", "computer.png"))
             position = {}
             if host.params.get("posX"):
-                layout = "present"
+                layout = "preset"
                 position["x"] = host.params["posX"]
             if host.params.get("posY"):
-                layout = "present"
+                layout = "preset"
                 position["y"] = host.params["posY"]
             elements.append({"data": {"id": host.name, "label": host.name, "type": "host", "url": img_url}, "classes": "rectangle", "position": position})
             # setup groups
@@ -220,10 +220,10 @@ class APIServer:
             dpid = ":".join(textwrap.wrap(getattr(switch, "dpid", "0000000000000000"), 2))
             position = {}
             if switch.params.get("posX"):
-                layout = "present"
+                layout = "preset"
                 position["x"] = switch.params["posX"]
             if switch.params.get("posY"):
-                layout = "present"
+                layout = "preset"
                 position["y"] = switch.params["posY"]
             elements.append({"data": {"id": switch.name, "label": switch.name, "type": "switch", "dpid": dpid, "url": img_url}, "classes": "rectangle", "position": position})
             # setup groups
@@ -384,7 +384,7 @@ class APIServer:
                     html.Img(src=get_asset_url('mininet-sec.png')),
                     cyto.Cytoscape(
                         id="cytoscape",
-                        layout={"name": "present"},
+                        layout={"name": layout},
                         style={"width": "100%", "height": "95vh"},
                         elements=elements,
                         contextMenu=context_menu,
