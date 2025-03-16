@@ -384,7 +384,7 @@ class APIServer:
                     html.Img(src=get_asset_url('mininet-sec.png')),
                     cyto.Cytoscape(
                         id="cytoscape",
-                        layout={"name": layout},
+                        layout={"name": layout, "fit": True},
                         style={"width": "100%", "height": "95vh"},
                         elements=elements,
                         contextMenu=context_menu,
