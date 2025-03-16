@@ -59,6 +59,8 @@ class APIServer:
 
         self.default_stylesheet = []
 
+        self.positions = {}
+
         # loading layout
         self.app.layout = html.Div([
             dcc.Location(id='url'),
@@ -85,7 +87,10 @@ class APIServer:
             Input("dropdown-update-layout", "value"),
         )
         def update_layout(layout):
-            return {"name": layout, "animate": True}
+            new_layout = {"name": layout, "animate": True}
+            if layout == "preset":
+                new_layout["positions"] = self.positions
+            return new_layout
 
         @callback(
             Output("tap-node-data-json-output", "children"),
@@ -204,6 +209,8 @@ class APIServer:
                 layout = "preset"
                 position["y"] = host.params["posY"]
             elements.append({"data": {"id": host.name, "label": host.name, "type": "host", "url": img_url}, "classes": "rectangle", "position": position})
+            if position:
+                self.positions[host.name] = position
             # setup groups
             group = host.params.get("group")
             if not group:
@@ -226,6 +233,8 @@ class APIServer:
                 layout = "preset"
                 position["y"] = switch.params["posY"]
             elements.append({"data": {"id": switch.name, "label": switch.name, "type": "switch", "dpid": dpid, "url": img_url}, "classes": "rectangle", "position": position})
+            if position:
+                self.positions[switch.name] = position
             # setup groups
             group = switch.params.get("group")
             if not group:
