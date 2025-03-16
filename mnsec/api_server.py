@@ -189,13 +189,21 @@ class APIServer:
         self.server.add_url_rule("/xterm/<host>", None, self.xterm, methods=["GET"])
 
     def setup(self):
+        layout = "cose"
         elements = []
         groups = {}
         for host in self.mnsec.hosts:
             img_url = host.params.get("img_url")
             if not img_url:
                 img_url = get_asset_url(getattr(host, "display_image", "computer.png"))
-            elements.append({"data": {"id": host.name, "label": host.name, "type": "host", "url": img_url}, "classes": "rectangle"})
+            position = {}
+            if host.params.get("posX"):
+                layout = "present"
+                position["x"] = host.params["posX"]
+            if host.params.get("posY"):
+                layout = "present"
+                position["y"] = host.params["posY"]
+            elements.append({"data": {"id": host.name, "label": host.name, "type": "host", "url": img_url}, "classes": "rectangle", "position": position})
             # setup groups
             group = host.params.get("group")
             if not group:
@@ -210,7 +218,14 @@ class APIServer:
             if not img_url:
                 img_url = get_asset_url(getattr(switch, "display_image", "switch.png"))
             dpid = ":".join(textwrap.wrap(getattr(switch, "dpid", "0000000000000000"), 2))
-            elements.append({"data": {"id": switch.name, "label": switch.name, "type": "switch", "dpid": dpid, "url": img_url}, "classes": "rectangle" })
+            position = {}
+            if switch.params.get("posX"):
+                layout = "present"
+                position["x"] = switch.params["posX"]
+            if switch.params.get("posY"):
+                layout = "present"
+                position["y"] = switch.params["posY"]
+            elements.append({"data": {"id": switch.name, "label": switch.name, "type": "switch", "dpid": dpid, "url": img_url}, "classes": "rectangle", "position": position})
             # setup groups
             group = switch.params.get("group")
             if not group:
@@ -369,7 +384,7 @@ class APIServer:
                     html.Img(src=get_asset_url('mininet-sec.png')),
                     cyto.Cytoscape(
                         id="cytoscape",
-                        layout={"name": "cose"},
+                        layout={"name": "present"},
                         style={"width": "100%", "height": "95vh"},
                         elements=elements,
                         contextMenu=context_menu,

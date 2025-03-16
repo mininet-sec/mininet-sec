@@ -35,15 +35,15 @@ class NetworkTopo( Topo ):
         ####################
         ## AS 100
         ####################
-        r101 = self.addHost('r101', ip='10.10.0.1/24', mynetworks=[], group="AS100")
+        r101 = self.addHost('r101', ip='10.10.0.1/24', mynetworks=[], group="AS100", posX=179.12, posY=257.28)
 
-        h101 = self.addHost('h101', ip='192.168.10.1/24', defaultRoute='via 192.168.10.254', group="AS100", dns_nameservers="172.16.50.3")
-        h102 = self.addHost('h102', ip='192.168.10.2/24', defaultRoute='via 192.168.10.254', group="AS100")
-        h103 = self.addHost('h103', ip='192.168.10.3/24', defaultRoute='via 192.168.10.254', group="AS100")
+        h101 = self.addHost('h101', ip='192.168.10.1/24', defaultRoute='via 192.168.10.254', group="AS100", dns_nameservers="172.16.50.3", posX=171.25, posY=348.24)
+        h102 = self.addHost('h102', ip='192.168.10.2/24', defaultRoute='via 192.168.10.254', group="AS100", posX=124.07, posY=480.65)
+        h103 = self.addHost('h103', ip='192.168.10.3/24', defaultRoute='via 192.168.10.254', group="AS100", posX=183.64, posY=454.71)
 
-        srv101 = self.addHost('srv101', ip='172.16.10.1/24', defaultRoute='via 172.16.10.254', apps=[{"name": "http", "port": 80}, {"name": "https", "port": 443}, {"name": "dns", "port": 53}, {"name": "ssh", "port": 22}], group="AS100")
-        srv102 = self.addHost('srv102', ip='172.16.10.2/24', defaultRoute='via 172.16.10.254', apps=[{"name": "smtp", "port": 25, "username": "teste", "password": "hackinsdn"}, {"name": "ssh", "port": 22}], group="AS100")
-        srv103 = self.addHost('srv103', ip='172.16.10.3/24', defaultRoute='via 172.16.10.254', group="AS100")
+        srv101 = self.addHost('srv101', ip='172.16.10.1/24', defaultRoute='via 172.16.10.254', apps=[{"name": "http", "port": 80}, {"name": "https", "port": 443}, {"name": "dns", "port": 53}, {"name": "ssh", "port": 22}], group="AS100", posX=57.83, posY=396.56)
+        srv102 = self.addHost('srv102', ip='172.16.10.2/24', defaultRoute='via 172.16.10.254', apps=[{"name": "smtp", "port": 25, "username": "teste", "password": "hackinsdn"}, {"name": "ssh", "port": 22}], group="AS100", posX=62.56, posY=470.10)
+        srv103 = self.addHost('srv103', ip='172.16.10.3/24', defaultRoute='via 172.16.10.254', group="AS100", posX=192.10, posY=394.22)
 
         rules_v4_as100 = {
             "filter": [
@@ -73,9 +73,9 @@ class NetworkTopo( Topo ):
             ]
         }
 
-        fw101 = self.addFirewall('fw101', rules_v4=rules_v4_as100, defaultRoute='via 10.10.0.1', mynetworks=["192.168.10.0/24", "172.16.10.0/24"], group="AS100")
+        fw101 = self.addFirewall('fw101', rules_v4=rules_v4_as100, defaultRoute='via 10.10.0.1', mynetworks=["192.168.10.0/24", "172.16.10.0/24"], group="AS100", posX=98.40, posY=326.86)
 
-        s101 = self.addSwitch('s101', cls=LinuxBridge, group="AS100")
+        s101 = self.addSwitch('s101', cls=LinuxBridge, group="AS100", posX=115.96, posY=403.87)
 
         self.addLink(s101, h101)
         self.addLink(s101, h102)
@@ -90,18 +90,18 @@ class NetworkTopo( Topo ):
         ####################
         ## AS 200
         ####################
-        r201 = self.addHost('r201', ip='10.20.20.1/24', mynetworks=[], group="AS200")
-        r202 = self.addHost('r202', ip='10.20.20.2/24', mynetworks=[], group="AS200")
+        r201 = self.addHost('r201', ip='10.20.20.1/24', mynetworks=[], group="AS200", posX=284.26, posY=228.88)
+        r202 = self.addHost('r202', ip='10.20.20.2/24', mynetworks=[], group="AS200", posX=448.33, posY=226.83)
 
-        h201 = self.addHost('h201', ip='192.168.20.1/24', defaultRoute='via 192.168.20.254', group="AS200")
+        h201 = self.addHost('h201', ip='192.168.20.1/24', defaultRoute='via 192.168.20.254', group="AS200", posX=461.31, posY=303.97)
 
-        kytos = self.addHost('kytos', ip=None, cls=K8sPod, image="hackinsdn/kytos:allinone", args=["-E"], env=[{"name": "MONGO_USERNAME", "value": "kytos"}, {"name": "MONGO_PASSWORD", "value": "kytos"}, {"name": "MONGO_DBNAME", "value": "kytos"}, {"name": "MONGO_HOST_SEEDS", "value": "127.0.0.1:27017"}], publish=["6653:6653", "8181:8181"], img_url="https://raw.githubusercontent.com/mininet-sec/mininet-sec/refs/heads/main/mnsec/assets/kytos-ng-icon.png", group="AS200")
+        kytos = self.addHost('kytos', ip=None, cls=K8sPod, image="hackinsdn/kytos:allinone", args=["-E"], env=[{"name": "MONGO_USERNAME", "value": "kytos"}, {"name": "MONGO_PASSWORD", "value": "kytos"}, {"name": "MONGO_DBNAME", "value": "kytos"}, {"name": "MONGO_HOST_SEEDS", "value": "127.0.0.1:27017"}], publish=["6653:6653", "8181:8181"], img_url="https://raw.githubusercontent.com/mininet-sec/mininet-sec/refs/heads/main/mnsec/assets/kytos-ng-icon.png", group="AS200", posX=273.40, posY=475.89)
 
-        ids201 = self.addHost('ids201', ip=None, cls=K8sPod, image="hackinsdn/suricata:latest", env=[{"name": "SURICATA_IFACE", "value": "ids201-eth0"}, {"name": "SURICATA_HOME_NET", "value": "192.168.20.0/24,172.16.20.0/24"}], group="AS200")
+        ids201 = self.addHost('ids201', ip=None, cls=K8sPod, image="hackinsdn/suricata:latest", env=[{"name": "SURICATA_IFACE", "value": "ids201-eth0"}, {"name": "SURICATA_HOME_NET", "value": "192.168.20.0/24,172.16.20.0/24"}], group="AS200", posX=341.68, posY=473.26)
 
-        srv201 = self.addHost('srv201', ip='172.16.20.1/24', defaultRoute='via 172.16.20.254', group="AS200")
+        srv201 = self.addHost('srv201', ip='172.16.20.1/24', defaultRoute='via 172.16.20.254', group="AS200", posX=453.87, posY=479.01)
 
-        secflood1 = self.addHost('secflood1', ip='192.168.20.10/24', routes=[("192.168.0.0/16", "192.168.20.254"), ("172.16.0.0/16", "192.168.20.254")], publish=["8443:443"], cls=K8sPod, image="hackinsdn/secflood:latest", env=[{"name": "SECFLOOD_INTF_INSIDE", "value": "secflood1-eth0"}, {"name": "SECFLOOD_GW_INSIDE", "value": "192.168.20.254"}, {"name": "SECFLOOD_INTF_OUTSIDE", "value": "secflood1-eth1"}], group="AS200")
+        secflood1 = self.addHost('secflood1', ip='192.168.20.10/24', routes=[("192.168.0.0/16", "192.168.20.254"), ("172.16.0.0/16", "192.168.20.254")], publish=["8443:443"], cls=K8sPod, image="hackinsdn/secflood:latest", env=[{"name": "SECFLOOD_INTF_INSIDE", "value": "secflood1-eth0"}, {"name": "SECFLOOD_GW_INSIDE", "value": "192.168.20.254"}, {"name": "SECFLOOD_INTF_OUTSIDE", "value": "secflood1-eth1"}], group="AS200", posX=448.45, posY=385.65)
 
         rules_v4_as200 = {
             "filter": [
@@ -113,12 +113,12 @@ class NetworkTopo( Topo ):
             ]
         }
 
-        fw201 = self.addFirewall('fw201', rules_v4=rules_v4_as200, defaultRoute='via 10.20.0.1', mynetworks=["192.168.20.0/24", "172.16.20.0/24"], group="AS200")
+        fw201 = self.addFirewall('fw201', rules_v4=rules_v4_as200, defaultRoute='via 10.20.0.1', mynetworks=["192.168.20.0/24", "172.16.20.0/24"], group="AS200", posX=291.72, posY=315.94)
 
-        s201 = self.addSwitch('s201', group="AS200")
-        s202 = self.addSwitch('s202', group="AS200")
-        s203 = self.addSwitch('s203', group="AS200")
-        s204 = self.addSwitch('s204', cls=LinuxBridge, group="AS200")
+        s201 = self.addSwitch('s201', group="AS200", posX=367.29, posY=285.56)
+        s202 = self.addSwitch('s202', group="AS200", posX=400.56, posY=452.08)
+        s203 = self.addSwitch('s203', group="AS200", posX=364.44, posY=386.75)
+        s204 = self.addSwitch('s204', cls=LinuxBridge, group="AS200", posX=289.40, posY=386.38)
 
         self.addLink(r201, r202)
         self.addLink(s201, h201)
@@ -137,13 +137,13 @@ class NetworkTopo( Topo ):
         ####################
         ## AS 300
         ####################
-        r301 = self.addHost('r301', ip='10.30.0.1/24', mynetworks=[], group="AS300")
+        r301 = self.addHost('r301', ip='10.30.0.1/24', mynetworks=[], group="AS300", posX=551.32, posY=316.87)
 
-        h301 = self.addHost('h301', ip='192.168.30.1/24', defaultRoute='via 192.168.30.254', group="AS300")
-        h302 = self.addHost('h302', ip='192.168.30.2/24', defaultRoute='via 192.168.30.254', group="AS300")
-        h303 = self.addHost('h303', ip='192.168.30.3/24', defaultRoute='via 192.168.30.254', group="AS300")
+        h301 = self.addHost('h301', ip='192.168.30.1/24', defaultRoute='via 192.168.30.254', group="AS300", posX=627.75, posY=299.52)
+        h302 = self.addHost('h302', ip='192.168.30.2/24', defaultRoute='via 192.168.30.254', group="AS300", posX=719.43, posY=259.25)
+        h303 = self.addHost('h303', ip='192.168.30.3/24', defaultRoute='via 192.168.30.254', group="AS300", posX=683.84, posY=209.64)
 
-        srv301 = self.addHost('srv301', ip='172.16.30.1/24', defaultRoute='via 172.16.30.254', group="AS300")
+        srv301 = self.addHost('srv301', ip='172.16.30.1/24', defaultRoute='via 172.16.30.254', group="AS300", posX=704.85, posY=318.41)
 
         rules_v4_as300 = {
             "filter": [
@@ -155,9 +155,9 @@ class NetworkTopo( Topo ):
             ]
         }
 
-        fw301 = self.addFirewall('fw301', rules_v4=rules_v4_as300, defaultRoute='via 10.30.0.1', mynetworks=["192.168.30.0/24", "172.16.30.0/24"], group="AS300")
+        fw301 = self.addFirewall('fw301', rules_v4=rules_v4_as300, defaultRoute='via 10.30.0.1', mynetworks=["192.168.30.0/24", "172.16.30.0/24"], group="AS300", posX=547.98, posY=223.21)
 
-        s301 = self.addSwitch('s301', cls=LinuxBridge, group="AS300")
+        s301 = self.addSwitch('s301', cls=LinuxBridge, group="AS300", posX=621.68, posY=220.83)
 
         self.addLink(s301, h301)
         self.addLink(s301, h302)
@@ -170,12 +170,12 @@ class NetworkTopo( Topo ):
         ####################
         ## AS 400
         ####################
-        r401 = self.addHost('r401', ip='10.40.40.1/30', mynetworks=["192.168.40.0/24"], group="AS400")
-        r402 = self.addHost('r402', ip='10.40.40.2/30', mynetworks=["172.16.40.0/24"], group="AS400")
+        r401 = self.addHost('r401', ip='10.40.40.1/30', mynetworks=["192.168.40.0/24"], group="AS400", posX=558.36, posY=418.30)
+        r402 = self.addHost('r402', ip='10.40.40.2/30', mynetworks=["172.16.40.0/24"], group="AS400", posX=700.52, posY=422.00)
 
-        h401 = self.addHost('h401', ip='192.168.40.1/24', defaultRoute='via 192.168.40.254', group="AS400")
+        h401 = self.addHost('h401', ip='192.168.40.1/24', defaultRoute='via 192.168.40.254', group="AS400", posX=540.55, posY=471.86)
 
-        srv401 = self.addHost('srv401', cls=K8sPod, image="hackinsdn/vuln-ssl-heartbleed:latest", ip="172.16.40.1/24", defaultRoute="via 172.16.40.254", group="AS400")
+        srv401 = self.addHost('srv401', cls=K8sPod, image="hackinsdn/vuln-ssl-heartbleed:latest", ip="172.16.40.1/24", defaultRoute="via 172.16.40.254", group="AS400", posX=647.53, posY=480.82)
 
         self.addLink(r401, r402)
         self.addLink(r401, h401, ipv4_node1="192.168.40.254/24")
@@ -185,11 +185,11 @@ class NetworkTopo( Topo ):
         ####################
         ## AS 500
         ####################
-        r501 = self.addHost('r501', ip='172.16.50.254/24', mynetworks=["172.16.50.0/24"], group="AS500")
-        r502 = self.addHost('r502', ip='172.16.50.253/24', mynetworks=["172.16.50.0/24"], group="AS500")
+        r501 = self.addHost('r501', ip='172.16.50.254/24', mynetworks=["172.16.50.0/24"], group="AS500", posX=791.27, posY=376.31)
+        r502 = self.addHost('r502', ip='172.16.50.253/24', mynetworks=["172.16.50.0/24"], group="AS500", posX=785.14, posY=470.72)
 
-        srv501 = self.addHost('srv501', ip='172.16.50.1/24', defaultRoute='via 172.16.50.254', apps=[{"name": "http", "port": 80}, {"name": "https", "port": 443}], group="AS500")
-        srv502 = self.addHost('srv502', ip='172.16.50.2/24', defaultRoute='via 172.16.50.254', group="AS500")
+        srv501 = self.addHost('srv501', ip='172.16.50.1/24', defaultRoute='via 172.16.50.254', apps=[{"name": "http", "port": 80}, {"name": "https", "port": 443}], group="AS500", posX=866.28, posY=292.85)
+        srv502 = self.addHost('srv502', ip='172.16.50.2/24', defaultRoute='via 172.16.50.254', group="AS500", posX=795.97, posY=288.68)
         srv503_postStart = [
             "service-mnsec-bind9.sh srv503 --start",
             "service-mnsec-bind9.sh srv503 --enable-recursion",
@@ -197,9 +197,9 @@ class NetworkTopo( Topo ):
             "service-mnsec-bind9.sh srv503 --add-entry hackinsdn.com \"iodine IN A 172.16.50.2\"",
             "service-mnsec-bind9.sh srv503 --add-entry hackinsdn.com \"testetun IN NS iodine\"",
         ]
-        srv503 = self.addHost('srv503', ip='172.16.50.3/24', defaultRoute='via 172.16.50.254', group="AS500", postStart=srv503_postStart)
+        srv503 = self.addHost('srv503', ip='172.16.50.3/24', defaultRoute='via 172.16.50.254', group="AS500", postStart=srv503_postStart, posX=867.15, posY=473.60)
 
-        s501 = self.addSwitch('s501', cls=LinuxBridge, group="AS500")
+        s501 = self.addSwitch('s501', cls=LinuxBridge, group="AS500", posX=857.91, posY=367.15)
 
         self.addLink(s501, srv501, cls=TCLink, bw=10)
         self.addLink(s501, srv502)
