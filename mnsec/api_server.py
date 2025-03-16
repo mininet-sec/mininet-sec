@@ -414,11 +414,11 @@ class APIServer:
                                                             html.Br(),
                                                             dcc.Dropdown(
                                                                 id="dropdown-update-layout",
-                                                                value="cose",
+                                                                value=layout,
                                                                 clearable=False,
                                                                 options=[
                                                                     {"label": name.capitalize(), "value": name}
-                                                                    for name in ["grid", "random", "circle", "cose", "concentric"]
+                                                                    for name in set(["grid", "random", "circle", "cose", "concentric", layout])
                                                                 ],
                                                             ),
                                                             html.Br(),
