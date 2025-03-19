@@ -58,3 +58,21 @@ def makeIntfSingle(intf, deleteIntf=True, node=None):
     if cmdOutput:
         raise Exception(f"Error creating interface {intf}: {cmdOutput}")
     runCmd(f"ip link set up {intf}")
+
+def parse_publish(publish_orig):
+    """Parse published ports: from list of string to list of dict."""
+    publish = []
+    for publish_str in publish_orig:
+        params = publish_str.split(":")
+        if len(params) < 2:
+            raise ValueError(f"Invalid publish params {publish_str}")
+        port2 = params.pop(-1)
+        proto = "tcp"
+        if "/" in port2:
+            port2, proto = port2.split("/")
+        port1 = params.pop(-1)
+        host1 = "0.0.0.0"
+        if params:
+            host1 = ":".join(params)
+        publish.append({"host1": host1, "port1": port1, "port2": port2, "proto": proto})
+    return publish

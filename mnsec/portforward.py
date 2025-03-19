@@ -4,14 +4,16 @@ import subprocess
 import contextlib
 import atexit
 
-def portforward(port1=None, host2=None, port2=None, proto="tcp", host1="0.0.0.0", proto2=None):
-    if not port1 or not host2 or not port2:
-        raise ValueError(f"Invalid mandatory fields: port1={port1} host2={host2} port2={port2}")
+def portforward(port1=None, host2=None, port2=None, proto="tcp", host1="0.0.0.0", proto2=None, dst_pair=None):
+    if host2 and port2:
+        dst_pair = "%s:%s" % (host2, port2)
+    if not port1 or not dst_pair:
+        raise ValueError(f"Invalid mandatory fields: port1={port1} dst_pair={dst_pair} (host2={host2} port2={port2})")
 
     proto2 = proto if proto2 is None else proto2
-    command = ['socat', '-lpmnsec-socat-%s-%s-%s-%s' % (proto, port1, host2, port2),
+    command = ['socat', '-lpmnsec-socat-%s-%s-%s' % (proto, port1, dst_pair),
                '%s-listen:%s,bind=%s,reuseaddr,fork' % (proto, port1, host1),
-               '%s:%s:%s' % (proto2, host2, port2)]
+               '%s:%s' % (proto2, dst_pair)]
     kwargs = {'stdin': subprocess.DEVNULL, 'stdout': subprocess.DEVNULL,
               'stderr': subprocess.PIPE}
     proc = subprocess.Popen(command, **kwargs)
