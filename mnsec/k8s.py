@@ -19,6 +19,7 @@ from mininet.util import quietRun, errRun
 from mininet.clean import addCleanupCallback
 
 from mnsec.portforward import portforward
+from mnsec.util import parse_publish
 
 
 KUBECTL = None
@@ -90,7 +91,7 @@ class K8sPod(Node):
         self.k8s_env = env
         if os.getenv("GTAG"):
             self.k8s_env.append({"name": "GTAG", "value": os.getenv("GTAG")})
-        self.k8s_publish = self.parse_publish(publish)
+        self.k8s_publish = parse_publish(publish)
         self.port_forward = []
         self.waitRunning = waitRunning
         if self.k8s_publish and not self.waitRunning:
@@ -99,24 +100,6 @@ class K8sPod(Node):
         if img:
             self.display_image = img
         Node.__init__(self, name, **params)
-
-    def parse_publish(self, publish_orig):
-        """Parse publish: from list of string to list of dict."""
-        publish = []
-        for publish_str in publish_orig:
-            params = publish_str.split(":")
-            if len(params) < 2:
-                raise ValueError(f"Invalid publish params {publish_str}")
-            port2 = params.pop(-1)
-            proto = "tcp"
-            if "/" in port2:
-                port2, proto = port2.split("/")
-            port1 = params.pop(-1)
-            host1 = "0.0.0.0"
-            if params:
-                host1 = ":".join(params)
-            publish.append({"host1": host1, "port1": port1, "port2": port2, "proto": proto})
-        return publish
 
     def startShell(self, **moreParams):
         """Create the Pod (run)."""

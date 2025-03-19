@@ -15,7 +15,7 @@ from mininet.log import info, error, warn, debug
 from mininet.moduledeps import pathCheck
 from mininet.clean import addCleanupCallback, sh
 
-from mnsec.util import makeIntfSingle
+from mnsec.util import makeIntfSingle, parse_publish
 
 
 def cleanup():
@@ -35,6 +35,29 @@ class OVSSwitch(MN_OVS):
 class Host( Node ):
     """Mininet-Sec host."""
     display_image = "computer.png"
+
+    def post_startup(self):
+        """Run steps after host has been created"""
+        self.setup_published_ports()
+
+    def setup_published_ports(self):
+        """Setup published ports using socat."""
+        for kw in parse_publish(self.params.get("publish", [])):
+            h1, p1, proto, p2 = kw["host1"], kw["port1"], kw["proto"], kw["port2"]
+            socat_filename = f"/tmp/mnsec/local-{h1}-{p1}-{proto}.sock"
+            try:
+                pf = portforward(
+                    host1=h1,
+                    port1=p1,
+                    proto=proto,
+                    proto2="unix-connect",
+                    dst_pair=socat_filename,
+                )
+            except Exception as exc:
+                error(f"\n[ERROR] Failed to create port forward: kw={kw} -- {exc}")
+                continue
+            kw["portforward"] = pf
+            self.cmd(f"socat -lpmnsec-socat-unix-{h1}-{p1}-{proto} unix-listen:{socat_filename},fork {proto}:127.0.0.1:{p2} >/dev/null 2>&1 &", shell=True)
 
 
 class LinuxBridge(MN_Lxbr):

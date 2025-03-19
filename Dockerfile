@@ -16,6 +16,8 @@ RUN apt-get update \
  && install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl \
  && curl -LO https://github.com/nakabonne/ali/releases/download/v0.7.3/ali_0.7.3_linux_amd64.deb \
  && dpkg -i ali_0.7.3_linux_amd64.deb \
+ && curl https://raw.githubusercontent.com/gkbrk/slowloris/refs/heads/master/slowloris.py -o /usr/local/bin/slowloris \
+ && chmod +x /usr/local/bin/slowloris \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/* /tmp/*
 
