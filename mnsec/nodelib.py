@@ -15,6 +15,7 @@ from mininet.log import info, error, warn, debug
 from mininet.moduledeps import pathCheck
 from mininet.clean import addCleanupCallback, sh
 
+from mnsec.portforward import portforward
 from mnsec.util import makeIntfSingle, parse_publish
 
 
