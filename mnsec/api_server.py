@@ -176,26 +176,51 @@ class APIServer:
         )
         def download_topology(n_clicks, elements):
             topo_dict = copy.deepcopy(self.mnsec.topo_dict) if self.mnsec.topo_dict else {}
-            topo_dict.setdefault("defaults", {})
+            topo_dict.setdefault("settings", {})
             topo_dict.setdefault("hosts", {})
             topo_dict.setdefault("switches", {})
             topo_dict.setdefault("links", {})
             for ele in elements:
                 data = ele["data"]
-                if "source" not in data and "group" not in data:
-                    ele_type = "hosts" if data["type"] == "host" else "switches"
-                    node = self.mnsec.nameToNode.get(data["id"])
-                    if not node:
-                        continue
-                    topo_dict[ele_type][node.name] = node.params | {
-                        "kind": self.mnsec.getObjKind(node),
-                        "posX": float("%.2f" % ele["position"]["x"]),
-                        "posY": float("%.2f" % ele["position"]["y"]),
-                    }
-                elif "source" in data and "target" in data:
-                    # TODO: edge
-                    pass
-            return {"content": json.dumps({"topology": "123"}), "filename": "mytopology.json"}
+                if "source" in data or "group" in data:
+                    continue
+                ele_type = "hosts" if data["type"] == "host" else "switches"
+                node = self.mnsec.nameToNode.get(data["id"])
+                if not node:
+                    continue
+                topo_dict[ele_type][node.name] = node.params
+                kind = self.mnsec.getObjKind(node)
+                if topo_dict["settings"].get(f"{ele_type}_kind", "default") != kind:
+                    topo_dict[ele_type][node.name]["kind"] = kind
+
+                # add x, y positions if they actually exist (float comparison with almost-equality)
+                if abs(ele["position"]["x"] - 0.01) > 0.1:
+                    topo_dict[ele_type][node.name]["posX"] = float("%.2f" % ele["position"]["x"])
+                if abs(ele["position"]["y"] - 0.01) > 0.1:
+                    topo_dict[ele_type][node.name]["posY"] = float("%.2f" % ele["position"]["y"])
+
+                # remove attributes that are empty, internal, etc
+                topo_dict[ele_type][node.name].pop("homeDir", None)
+                topo_dict[ele_type][node.name].pop("isSwitch", None)
+                if "ip" in topo_dict[ele_type][node.name] and not topo_dict[ele_type][node.name]["ip"]:
+                    topo_dict[ele_type][node.name].pop("ip")
+
+            for link in self.mnsec.links:
+                link_dict = {
+                    "node1": link.intf1.node.name,
+                    "node2": link.intf2.node.name,
+                }
+                kind = self.mnsec.getObjKind(link)
+                if topo_dict["settings"].get("links_kind", "default") != kind:
+                    link_dict["kind"] = kind
+                if link.intf1.params:
+                    link_dict["params1"] = link.intf1.params
+                if link.intf2.params:
+                    link_dict["params2"] = link.intf2.params
+                topo_dict["links"].append(link_dict)
+
+            return {"content": yaml.dump(topo_dict), "filename": "mytopology.json"}
+
 
         gtag_str = (
             "window.dataLayer = window.dataLayer || [];"

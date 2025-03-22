@@ -69,7 +69,7 @@ SWITCHES = { 'user': UserSwitch,
 }
 SWITCHES_REV = {
     "UserSwitch": "user",
-    "OVSSwitch": "ovs",
+    "OVSSwitch": "default",
     "OVSBridge": "ovsbr",
     "LinuxBridge": "lxbr",
     "NetworkTAP": "nettap",
@@ -84,7 +84,7 @@ HOSTS = { 'proc': Host,
           'iptables': IPTablesFirewall,
 }
 HOSTS_REV = {
-    "Host": "defeault",
+    "Host": "default",
     "RTSchedHost": "rt",
     "CFSSchedHost": "cfs",
     "K8sPod": "k8spod",
@@ -162,6 +162,7 @@ class Mininet_sec(Mininet):
 
         if topoFile:
             kwargs["topo"] = self.buildTopoFromFile(topoFile)
+            kwargs.update(self.processTopoSettings())
 
         if self.run_api_server:
             self.api_server = APIServer(self)
@@ -181,22 +182,41 @@ class Mininet_sec(Mininet):
             self.topo_dict = yaml.load(open(topoFile), Loader=yaml.Loader)
         except Exception as exc:
             raise ValueError(f"Invalid topology file. Error reading topology: {exc}")
-        defaults = self.topo_dict.get("defaults", {})
+        settings = self.topo_dict.get("settings", {})
         topo = Topo()
         for host in self.topo_dict.get("hosts", {}):
             host_opts = self.topo_dict["hosts"][host] or {}
-            cls = HOSTS[host_opts.get("kind", defaults.get("hosts_kind", HOSTDEF))]
+            # TODO: process settings["env"]
+            cls = HOSTS[host_opts.get("kind", settings.get("hosts_kind", HOSTDEF))]
             topo.addHost(host, cls=cls, **host_opts)
         for switch in self.topo_dict.get("switches", {}):
             sw_opts = self.topo_dict["switches"][switch] or {}
-            cls = SWITCHES[sw_opts.get("kind", defaults.get("switches_kind", SWITCHDEF))]
+            cls = SWITCHES[sw_opts.get("kind", settings.get("switches_kind", SWITCHDEF))]
             topo.addSwitch(switch, cls=cls, **sw_opts)
         for link in self.topo_dict.get("links", {}):
-            cls = LINKS[link.get("kind", defaults.get("links_kind", LINKDEF))]
+            cls = LINKS[link.get("kind", settings.get("links_kind", LINKDEF))]
             node1 = link.pop("node1")
             node2 = link.pop("node2")
             topo.addLink(node1, node2, cls=cls, **link)
         return topo
+
+    def processTopoSettings(self):
+        """When using the yaml topology, process settings attribute"""
+        if not self.topo_dict.get("settings") or not isinstance(self.topo_dict["settings"], dict):
+            return
+        mnsec_attrs = [
+            "apps",
+            "workDir",
+            "sflow_enabled",
+            "sflow_collector",
+            "sflow_sampling",
+            "sflow_polling",
+            "run_api_server",
+        ]
+        for attr in mnsec_attrs:
+            if self.topo_dict["settings"].get(attr):
+                setattr(self, attr, self.topo_dict["settings"][attr])
+        return self.topo_dict["settings"].get("mininet", {})
 
     def buildFromTopo( self, topo=None ):
         """Build mininet from a topology object
@@ -490,14 +510,16 @@ class Mininet_sec(Mininet):
         output(node.cmd("nmap " + " ".join(args)))
 
     def getObjKind(self, obj):
-        if obj.__name__ in HOSTS_REV:
-            return HOSTS_REV[obj.__name__]
-        if obj.__name__ in SWITCHES_REV:
-            return SWITCHES_REV[obj.__name__]
-        if obj.__name__ in LINKS_REV:
-            return LINKS_REV[obj.__name__]
-        if obj.__name__ in CONTROLLERS_REV:
-            return CONTROLLERS_REV[obj.__name__]
+        name = obj.__class__.__name__
+        if name in HOSTS_REV:
+            return HOSTS_REV[name]
+        if name in SWITCHES_REV:
+            return SWITCHES_REV[name]
+        if name in LINKS_REV:
+            return LINKS_REV[name]
+        if name in CONTROLLERS_REV:
+            return CONTROLLERS_REV[name]
+        return None
 
 
 class MininetSecWithControlNet(MininetWithControlNet):
