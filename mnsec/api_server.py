@@ -245,6 +245,7 @@ class APIServer:
         )
 
         self.server.add_url_rule("/topology", None, self.get_topology, methods=["GET"])
+        self.server.add_url_rule("/ifindexes", None, self.get_ifindexes, methods=["GET"])
         self.server.add_url_rule("/add_node", None, self.add_node, methods=["POST"])
         self.server.add_url_rule("/add_link", None, self.add_link, methods=["POST"])
         self.server.add_url_rule("/xterm/<host>", None, self.xterm, methods=["GET"])
@@ -693,6 +694,26 @@ class APIServer:
         for link in self.mnsec.links:
             topo["links"].append({"source": link.intf1.node.name, "target": link.intf2.node.name})
         return topo, 200
+
+    def get_ifindexes(self):
+        ifindexes = {}
+        sw2dpid = {}
+        for switch in self.mnsec.switches:
+            sw2dpid[switch.name] = switch.dpid
+        for link in self.mnsec.links:
+            for intf in [link.intf1, link.intf2]:
+                if intf.node.name not in sw2dpid:
+                    continue
+                result = intf.cmd(f"ip link show dev {intf.name}")
+                result = result.split(":", 1)[0]
+                ifindex = 0
+                if result.isdigit():
+                    ifindex = int(result)
+                    ifindexes[ifindex] = {
+                        "dpid": sw2dpid[intf.node.name],
+                        "port_no": intf.node.ports[intf]
+                    }
+        return ifindexes, 200
 
     def add_node(self):
         data = flask.request.get_json(force=True)
