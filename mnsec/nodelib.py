@@ -8,7 +8,7 @@ import re
 import traceback
 
 from mininet.nodelib import LinuxBridge as MN_Lxbr
-from mininet.node import Node
+from mininet.node import Node, CPULimitedHost
 from mininet.node import OVSSwitch as MN_OVS
 from mininet.link import Intf
 from mininet.log import info, error, warn, debug
@@ -26,6 +26,25 @@ def cleanup():
 
 
 addCleanupCallback(cleanup)
+
+
+class RTSchedHost(CPULimitedHost):
+    """RT (Real-Time) scheduler based Host."""
+
+    def __init__( self, name, **params ):
+        """Override sched"""
+        params["sched"] = "rt"
+        CPULimitedHost.__init__(self, name, **params)
+
+
+class CFSSchedHost(CPULimitedHost):
+    """CFS (Completely Fair Scheduler) scheduler based Host."""
+
+    def __init__( self, name, **params ):
+        """Override sched"""
+        params["sched"] = "cfs"
+        CPULimitedHost.__init__(self, name, **params)
+
 
 class OVSSwitch(MN_OVS):
     """Mininet-Sec openvswitch."""

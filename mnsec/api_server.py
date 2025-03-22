@@ -1,4 +1,6 @@
 import json
+import yaml
+import copy
 import flask
 import threading
 import textwrap
@@ -165,6 +167,35 @@ class APIServer:
                     item["style"]["source-label"] = "" if show == "disabled" else "data(slabel)"
                     item["style"]["target-label"] = "" if show == "disabled" else "data(tlabel)"
             return self.default_stylesheet
+
+        @callback(
+            Output("download-topology", "data"),
+            Input("btn-download-topology", "n_clicks"),
+            State('cytoscape', 'elements'),
+            prevent_initial_call=True,
+        )
+        def download_topology(n_clicks, elements):
+            topo_dict = copy.deepcopy(self.mnsec.topo_dict) if self.mnsec.topo_dict else {}
+            topo_dict.setdefault("defaults", {})
+            topo_dict.setdefault("hosts", {})
+            topo_dict.setdefault("switches", {})
+            topo_dict.setdefault("links", {})
+            for ele in elements:
+                data = ele["data"]
+                if "source" not in data and "group" not in data:
+                    ele_type = "hosts" if data["type"] == "host" else "switches"
+                    node = self.mnsec.nameToNode.get(data["id"])
+                    if not node:
+                        continue
+                    topo_dict[ele_type][node.name] = node.params | {
+                        "kind": self.mnsec.getObjKind(node),
+                        "posX": float("%.2f" % ele["position"]["x"]),
+                        "posY": float("%.2f" % ele["position"]["y"]),
+                    }
+                elif "source" in data and "target" in data:
+                    # TODO: edge
+                    pass
+            return {"content": json.dumps({"topology": "123"}), "filename": "mytopology.json"}
 
         gtag_str = (
             "window.dataLayer = window.dataLayer || [];"
@@ -431,8 +462,25 @@ class APIServer:
                                                                 ],
                                                             ),
                                                             html.Br(),
-                                                            html.I("Show interface names on links:"),
-                                                            dcc.RadioItems(['enabled', 'disabled'], 'disabled', id="show-interface-name"),
+                                                            html.Div(
+                                                                className="row",
+                                                                children=[
+                                                                    html.Div(
+                                                                        className="one-half column",
+                                                                        children=[
+                                                                            html.I("Show interface names on links:"),
+                                                                            dcc.RadioItems(['enabled', 'disabled'], 'disabled', id="show-interface-name"),
+                                                                        ],
+                                                                    ),
+                                                                    html.Div(
+                                                                        className="one-half column",
+                                                                        children=[
+                                                                            html.Button("Download topology", id="btn-download-topology"),
+                                                                            dcc.Download(id="download-topology"),
+                                                                        ],
+                                                                    ),
+                                                                ],
+                                                            ),
                                                             html.Br(),
                                                             html.I("Change node data:"),
                                                             html.Br(),

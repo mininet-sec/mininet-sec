@@ -31,7 +31,7 @@ from mininet import cli, util
 import mnsec.apps.all
 from mnsec.apps.app_manager import AppManager
 from mnsec.nodelib import ( IPTablesFirewall, Host, NetworkTAP, OVSSwitch,
-                            LinuxBridge )
+                            LinuxBridge, RTSchedHost, CFSSchedHost )
 from mnsec.api_server import APIServer
 from mnsec.k8s import K8sPod
 from mnsec.link import VxLanLink, L2tpLink
@@ -45,7 +45,6 @@ from mininet.link import Link, TCLink, TCULink, OVSLink
 from mininet.topo import ( SingleSwitchTopo, LinearTopo,
                            SingleSwitchReversedTopo, MinimalTopo )
 from mininet.topolib import TreeTopo, TorusTopo
-from mininet.util import specialClass
 
 # built in topologies, created only when run
 TOPODEF = 'minimal'
@@ -68,14 +67,28 @@ SWITCHES = { 'user': UserSwitch,
              'nettap': NetworkTAP,
              'default': OVSSwitch,
 }
+SWITCHES_REV = {
+    "UserSwitch": "user",
+    "OVSSwitch": "ovs",
+    "OVSBridge": "ovsbr",
+    "LinuxBridge": "lxbr",
+    "NetworkTAP": "nettap",
+}
 
 HOSTDEF = 'proc'
 HOSTS = { 'proc': Host,
-          'rt': specialClass( CPULimitedHost, defaults=dict( sched='rt' ) ),
-          'cfs': specialClass( CPULimitedHost, defaults=dict( sched='cfs' ) ),
+          'rt': RTSchedHost,
+          'cfs': CFSSchedHost,
           'default': Host,
           'k8spod': K8sPod,
           'iptables': IPTablesFirewall,
+}
+HOSTS_REV = {
+    "Host": "defeault",
+    "RTSchedHost": "rt",
+    "CFSSchedHost": "cfs",
+    "K8sPod": "k8spod",
+    "IPTablesFirewall": "iptables",
 }
 
 CONTROLLERDEF = 'default'
@@ -87,6 +100,15 @@ CONTROLLERS = { 'ref': Controller,
                 'default': DefaultController,  # Note: overridden below
                 'none': NullController,
 }
+CONTROLLERS_REV = {
+    "Controller": "ref",
+    "OVSController": "ovsc",
+    "NOX": "nox",
+    "RemoteController": "remote",
+    "Ryu": "ryu",
+    "DefaultController": "default",
+    "NullController": "none",
+}
 
 LINKDEF = 'default'
 LINKS = { 'default': Link,  # Note: overridden below
@@ -95,6 +117,14 @@ LINKS = { 'default': Link,  # Note: overridden below
           'ovs': OVSLink,
           'vxlan': VxLanLink,
           'l2tp': L2tpLink,
+}
+LINKS_REV = {
+    "Link": "default",
+    "TCLink": "tc",
+    "TCULink": "tcu",
+    "OVSLink": "ovs",
+    "VxLanLink": "vxlan",
+    "L2tpLink": "l2tp",
 }
 
 VERSION = "1.1.0"
@@ -279,6 +309,7 @@ class Mininet_sec(Mininet):
         """Start hosts."""
         if not host:
             return
+        host.cmd(f"export HOSTNAME={host.name}")
         homeDir = self.setupHostHomeDir(host)
         host.cmd(f"export HOME={homeDir} && cd ~")
         self.setupHostDNS(host)
@@ -457,6 +488,16 @@ class Mininet_sec(Mininet):
         """Run Nnmap from a given host."""
         node = node if not isinstance( node, str ) else self[ node ]
         output(node.cmd("nmap " + " ".join(args)))
+
+    def getObjKind(self, obj):
+        if obj.__name__ in HOSTS_REV:
+            return HOSTS_REV[obj.__name__]
+        if obj.__name__ in SWITCHES_REV:
+            return SWITCHES_REV[obj.__name__]
+        if obj.__name__ in LINKS_REV:
+            return LINKS_REV[obj.__name__]
+        if obj.__name__ in CONTROLLERS_REV:
+            return CONTROLLERS_REV[obj.__name__]
 
 
 class MininetSecWithControlNet(MininetWithControlNet):
