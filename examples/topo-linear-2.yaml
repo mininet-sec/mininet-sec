@@ -1,5 +1,5 @@
 name: lab-ospf-multiarea
-defaults:
+settings:
   env:
     DEFENVVAR1: xpto
   # hosts_kind: default

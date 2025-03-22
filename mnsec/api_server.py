@@ -1,4 +1,6 @@
 import json
+import yaml
+import copy
 import flask
 import threading
 import textwrap
@@ -59,6 +61,8 @@ class APIServer:
 
         self.default_stylesheet = []
 
+        self.positions = {}
+
         # loading layout
         self.app.layout = html.Div([
             dcc.Location(id='url'),
@@ -85,7 +89,10 @@ class APIServer:
             Input("dropdown-update-layout", "value"),
         )
         def update_layout(layout):
-            return {"name": layout, "animate": True}
+            new_layout = {"name": layout, "animate": True}
+            if layout == "preset":
+                new_layout["positions"] = self.positions
+            return new_layout
 
         @callback(
             Output("tap-node-data-json-output", "children"),
@@ -161,6 +168,60 @@ class APIServer:
                     item["style"]["target-label"] = "" if show == "disabled" else "data(tlabel)"
             return self.default_stylesheet
 
+        @callback(
+            Output("download-topology", "data"),
+            Input("btn-download-topology", "n_clicks"),
+            State('cytoscape', 'elements'),
+            prevent_initial_call=True,
+        )
+        def download_topology(n_clicks, elements):
+            topo_dict = copy.deepcopy(self.mnsec.topo_dict) if self.mnsec.topo_dict else {}
+            topo_dict.setdefault("settings", {})
+            topo_dict.setdefault("hosts", {})
+            topo_dict.setdefault("switches", {})
+            topo_dict.setdefault("links", {})
+            for ele in elements:
+                data = ele["data"]
+                if "source" in data or "group" in data:
+                    continue
+                ele_type = "hosts" if data["type"] == "host" else "switches"
+                node = self.mnsec.nameToNode.get(data["id"])
+                if not node:
+                    continue
+                topo_dict[ele_type][node.name] = node.params
+                kind = self.mnsec.getObjKind(node)
+                if topo_dict["settings"].get(f"{ele_type}_kind", "default") != kind:
+                    topo_dict[ele_type][node.name]["kind"] = kind
+
+                # add x, y positions if they actually exist (float comparison with almost-equality)
+                if abs(ele["position"]["x"] - 0.01) > 0.1:
+                    topo_dict[ele_type][node.name]["posX"] = float("%.2f" % ele["position"]["x"])
+                if abs(ele["position"]["y"] - 0.01) > 0.1:
+                    topo_dict[ele_type][node.name]["posY"] = float("%.2f" % ele["position"]["y"])
+
+                # remove attributes that are empty, internal, etc
+                topo_dict[ele_type][node.name].pop("homeDir", None)
+                topo_dict[ele_type][node.name].pop("isSwitch", None)
+                if "ip" in topo_dict[ele_type][node.name] and not topo_dict[ele_type][node.name]["ip"]:
+                    topo_dict[ele_type][node.name].pop("ip")
+
+            for link in self.mnsec.links:
+                link_dict = {
+                    "node1": link.intf1.node.name,
+                    "node2": link.intf2.node.name,
+                }
+                kind = self.mnsec.getObjKind(link)
+                if topo_dict["settings"].get("links_kind", "default") != kind:
+                    link_dict["kind"] = kind
+                if link.intf1.params:
+                    link_dict["params1"] = link.intf1.params
+                if link.intf2.params:
+                    link_dict["params2"] = link.intf2.params
+                topo_dict["links"].append(link_dict)
+
+            return {"content": yaml.dump(topo_dict), "filename": "mytopology.json"}
+
+
         gtag_str = (
             "window.dataLayer = window.dataLayer || [];"
             "function gtag () {"
@@ -189,13 +250,23 @@ class APIServer:
         self.server.add_url_rule("/xterm/<host>", None, self.xterm, methods=["GET"])
 
     def setup(self):
+        layout = "cose"
         elements = []
         groups = {}
         for host in self.mnsec.hosts:
             img_url = host.params.get("img_url")
             if not img_url:
                 img_url = get_asset_url(getattr(host, "display_image", "computer.png"))
-            elements.append({"data": {"id": host.name, "label": host.name, "type": "host", "url": img_url}, "classes": "rectangle"})
+            position = {}
+            if host.params.get("posX"):
+                layout = "preset"
+                position["x"] = host.params["posX"]
+            if host.params.get("posY"):
+                layout = "preset"
+                position["y"] = host.params["posY"]
+            elements.append({"data": {"id": host.name, "label": host.name, "type": "host", "url": img_url}, "classes": "rectangle", "position": position})
+            if position:
+                self.positions[host.name] = position
             # setup groups
             group = host.params.get("group")
             if not group:
@@ -210,7 +281,16 @@ class APIServer:
             if not img_url:
                 img_url = get_asset_url(getattr(switch, "display_image", "switch.png"))
             dpid = ":".join(textwrap.wrap(getattr(switch, "dpid", "0000000000000000"), 2))
-            elements.append({"data": {"id": switch.name, "label": switch.name, "type": "switch", "dpid": dpid, "url": img_url}, "classes": "rectangle" })
+            position = {}
+            if switch.params.get("posX"):
+                layout = "preset"
+                position["x"] = switch.params["posX"]
+            if switch.params.get("posY"):
+                layout = "preset"
+                position["y"] = switch.params["posY"]
+            elements.append({"data": {"id": switch.name, "label": switch.name, "type": "switch", "dpid": dpid, "url": img_url}, "classes": "rectangle", "position": position})
+            if position:
+                self.positions[switch.name] = position
             # setup groups
             group = switch.params.get("group")
             if not group:
@@ -369,7 +449,7 @@ class APIServer:
                     html.Img(src=get_asset_url('mininet-sec.png')),
                     cyto.Cytoscape(
                         id="cytoscape",
-                        layout={"name": "cose"},
+                        layout={"name": layout, "fit": True},
                         style={"width": "100%", "height": "95vh"},
                         elements=elements,
                         contextMenu=context_menu,
@@ -399,16 +479,33 @@ class APIServer:
                                                             html.Br(),
                                                             dcc.Dropdown(
                                                                 id="dropdown-update-layout",
-                                                                value="cose",
+                                                                value=layout,
                                                                 clearable=False,
                                                                 options=[
                                                                     {"label": name.capitalize(), "value": name}
-                                                                    for name in ["grid", "random", "circle", "cose", "concentric"]
+                                                                    for name in set(["grid", "random", "circle", "cose", "concentric", layout])
                                                                 ],
                                                             ),
                                                             html.Br(),
-                                                            html.I("Show interface names on links:"),
-                                                            dcc.RadioItems(['enabled', 'disabled'], 'disabled', id="show-interface-name"),
+                                                            html.Div(
+                                                                className="row",
+                                                                children=[
+                                                                    html.Div(
+                                                                        className="one-half column",
+                                                                        children=[
+                                                                            html.I("Show interface names on links:"),
+                                                                            dcc.RadioItems(['enabled', 'disabled'], 'disabled', id="show-interface-name"),
+                                                                        ],
+                                                                    ),
+                                                                    html.Div(
+                                                                        className="one-half column",
+                                                                        children=[
+                                                                            html.Button("Download topology", id="btn-download-topology"),
+                                                                            dcc.Download(id="download-topology"),
+                                                                        ],
+                                                                    ),
+                                                                ],
+                                                            ),
                                                             html.Br(),
                                                             html.I("Change node data:"),
                                                             html.Br(),
