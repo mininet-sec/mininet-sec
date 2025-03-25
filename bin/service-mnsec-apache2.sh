@@ -74,6 +74,11 @@ echo "<h1>Test server at $NAME</h1>" > $BASE_DIR/www/index.html
 sed -i "s@DocumentRoot /var/www/html@DocumentRoot $BASE_DIR/www@g" $BASE_DIR/sites-available/*.conf
 sed -i "s@Directory /var/www/@Directory $BASE_DIR/www/@g" $BASE_DIR/apache2.conf
 
+# fix eventual permission issues to allow www-data read content
+f=$BASE_DIR/www
+while [[ $f != / ]]; do chmod o+rx "$f"; f=$(dirname "$f"); done
+
+
 cat > $BASE_DIR/conf-available/custom-auth.conf <<EOF
 <Directory "$BASE_DIR/www/admin">
       AuthType Basic
