@@ -1,6 +1,5 @@
 import json
 import yaml
-import copy
 import flask
 import threading
 import textwrap
@@ -175,11 +174,12 @@ class APIServer:
             prevent_initial_call=True,
         )
         def download_topology(n_clicks, elements):
-            topo_dict = copy.deepcopy(self.mnsec.topo_dict) if self.mnsec.topo_dict else {}
-            topo_dict.setdefault("settings", {})
-            topo_dict.setdefault("hosts", {})
-            topo_dict.setdefault("switches", {})
-            topo_dict.setdefault("links", {})
+            topo_dict = {
+                "settings": self.mnsec.topo_dict.get("settings", {}),
+                "hosts": {},
+                "switches": {},
+                "links": [],
+            }
             for ele in elements:
                 data = ele["data"]
                 if "source" in data or "group" in data:
@@ -219,7 +219,7 @@ class APIServer:
                     link_dict["params2"] = link.intf2.params
                 topo_dict["links"].append(link_dict)
 
-            return {"content": yaml.dump(topo_dict), "filename": "mytopology.json"}
+            return {"content": yaml.dump(topo_dict, sort_keys=False), "filename": "mytopology.json"}
 
 
         gtag_str = (
