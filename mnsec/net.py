@@ -31,7 +31,7 @@ from mininet import cli, util
 import mnsec.apps.all
 from mnsec.apps.app_manager import AppManager
 from mnsec.nodelib import ( IPTablesFirewall, Host, NetworkTAP, OVSSwitch,
-                            LinuxBridge )
+                            LinuxBridge, RTSchedHost, CFSSchedHost )
 from mnsec.api_server import APIServer
 from mnsec.k8s import K8sPod
 from mnsec.link import VxLanLink, L2tpLink
@@ -45,7 +45,6 @@ from mininet.link import Link, TCLink, TCULink, OVSLink
 from mininet.topo import ( SingleSwitchTopo, LinearTopo,
                            SingleSwitchReversedTopo, MinimalTopo )
 from mininet.topolib import TreeTopo, TorusTopo
-from mininet.util import specialClass
 
 # built in topologies, created only when run
 TOPODEF = 'minimal'
@@ -68,14 +67,28 @@ SWITCHES = { 'user': UserSwitch,
              'nettap': NetworkTAP,
              'default': OVSSwitch,
 }
+SWITCHES_REV = {
+    "UserSwitch": "user",
+    "OVSSwitch": "default",
+    "OVSBridge": "ovsbr",
+    "LinuxBridge": "lxbr",
+    "NetworkTAP": "nettap",
+}
 
 HOSTDEF = 'proc'
 HOSTS = { 'proc': Host,
-          'rt': specialClass( CPULimitedHost, defaults=dict( sched='rt' ) ),
-          'cfs': specialClass( CPULimitedHost, defaults=dict( sched='cfs' ) ),
+          'rt': RTSchedHost,
+          'cfs': CFSSchedHost,
           'default': Host,
           'k8spod': K8sPod,
           'iptables': IPTablesFirewall,
+}
+HOSTS_REV = {
+    "Host": "default",
+    "RTSchedHost": "rt",
+    "CFSSchedHost": "cfs",
+    "K8sPod": "k8spod",
+    "IPTablesFirewall": "iptables",
 }
 
 CONTROLLERDEF = 'default'
@@ -87,6 +100,15 @@ CONTROLLERS = { 'ref': Controller,
                 'default': DefaultController,  # Note: overridden below
                 'none': NullController,
 }
+CONTROLLERS_REV = {
+    "Controller": "ref",
+    "OVSController": "ovsc",
+    "NOX": "nox",
+    "RemoteController": "remote",
+    "Ryu": "ryu",
+    "DefaultController": "default",
+    "NullController": "none",
+}
 
 LINKDEF = 'default'
 LINKS = { 'default': Link,  # Note: overridden below
@@ -95,6 +117,14 @@ LINKS = { 'default': Link,  # Note: overridden below
           'ovs': OVSLink,
           'vxlan': VxLanLink,
           'l2tp': L2tpLink,
+}
+LINKS_REV = {
+    "Link": "default",
+    "TCLink": "tc",
+    "TCULink": "tcu",
+    "OVSLink": "ovs",
+    "VxLanLink": "vxlan",
+    "L2tpLink": "l2tp",
 }
 
 VERSION = "1.1.0"
@@ -132,6 +162,7 @@ class Mininet_sec(Mininet):
 
         if topoFile:
             kwargs["topo"] = self.buildTopoFromFile(topoFile)
+            kwargs.update(self.processTopoSettings())
 
         if self.run_api_server:
             self.api_server = APIServer(self)
@@ -151,22 +182,41 @@ class Mininet_sec(Mininet):
             self.topo_dict = yaml.load(open(topoFile), Loader=yaml.Loader)
         except Exception as exc:
             raise ValueError(f"Invalid topology file. Error reading topology: {exc}")
-        defaults = self.topo_dict.get("defaults", {})
+        settings = self.topo_dict.get("settings", {})
         topo = Topo()
         for host in self.topo_dict.get("hosts", {}):
             host_opts = self.topo_dict["hosts"][host] or {}
-            cls = HOSTS[host_opts.get("kind", defaults.get("hosts_kind", HOSTDEF))]
+            # TODO: process settings["env"]
+            cls = HOSTS[host_opts.get("kind", settings.get("hosts_kind", HOSTDEF))]
             topo.addHost(host, cls=cls, **host_opts)
         for switch in self.topo_dict.get("switches", {}):
             sw_opts = self.topo_dict["switches"][switch] or {}
-            cls = SWITCHES[sw_opts.get("kind", defaults.get("switches_kind", SWITCHDEF))]
+            cls = SWITCHES[sw_opts.get("kind", settings.get("switches_kind", SWITCHDEF))]
             topo.addSwitch(switch, cls=cls, **sw_opts)
-        for link in self.topo_dict.get("links", {}):
-            cls = LINKS[link.get("kind", defaults.get("links_kind", LINKDEF))]
+        for link in self.topo_dict.get("links", []):
+            cls = LINKS[link.get("kind", settings.get("links_kind", LINKDEF))]
             node1 = link.pop("node1")
             node2 = link.pop("node2")
             topo.addLink(node1, node2, cls=cls, **link)
         return topo
+
+    def processTopoSettings(self):
+        """When using the yaml topology, process settings attribute"""
+        if not self.topo_dict.get("settings") or not isinstance(self.topo_dict["settings"], dict):
+            return
+        mnsec_attrs = [
+            "apps",
+            "workDir",
+            "sflow_enabled",
+            "sflow_collector",
+            "sflow_sampling",
+            "sflow_polling",
+            "run_api_server",
+        ]
+        for attr in mnsec_attrs:
+            if self.topo_dict["settings"].get(attr):
+                setattr(self, attr, self.topo_dict["settings"][attr])
+        return self.topo_dict["settings"].get("mininet", {})
 
     def buildFromTopo( self, topo=None ):
         """Build mininet from a topology object
@@ -279,6 +329,7 @@ class Mininet_sec(Mininet):
         """Start hosts."""
         if not host:
             return
+        host.cmd(f"export HOSTNAME={host.name}")
         homeDir = self.setupHostHomeDir(host)
         host.cmd(f"export HOME={homeDir} && cd ~")
         self.setupHostDNS(host)
@@ -457,6 +508,18 @@ class Mininet_sec(Mininet):
         """Run Nnmap from a given host."""
         node = node if not isinstance( node, str ) else self[ node ]
         output(node.cmd("nmap " + " ".join(args)))
+
+    def getObjKind(self, obj):
+        name = obj.__class__.__name__
+        if name in HOSTS_REV:
+            return HOSTS_REV[name]
+        if name in SWITCHES_REV:
+            return SWITCHES_REV[name]
+        if name in LINKS_REV:
+            return LINKS_REV[name]
+        if name in CONTROLLERS_REV:
+            return CONTROLLERS_REV[name]
+        return None
 
 
 class MininetSecWithControlNet(MininetWithControlNet):

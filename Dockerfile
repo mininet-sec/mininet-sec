@@ -8,14 +8,14 @@ RUN apt-get update \
 		xterm iperf socat telnet tmux git iptables-persistent traceroute \
 		bridge-utils nmap hping3 mininet iperf3 hydra iproute2 \
 		python3-pip libpq-dev openvswitch-switch openvswitch-testcontroller curl jq d-itg \
-		gcc python3-dev vim hashcat ifstat \
+		gcc python3-dev vim hashcat dstat \
 		apache2 ntp ssh bind9 dovecot-imapd dovecot-pop3d \
  && rm -f /usr/lib/python3.11/EXTERNALLY-MANAGED \
  && cd /tmp \
  && curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
  && install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl \
- && curl -LO https://github.com/nakabonne/ali/releases/download/v0.7.3/ali_0.7.3_linux_amd64.deb \
- && dpkg -i ali_0.7.3_linux_amd64.deb \
+ && curl -LO https://github.com/italovalcy/ali/releases/download/v0.7.6/ali_0.7.6_linux_amd64.deb \
+ && dpkg -i ali_0.7.6_linux_amd64.deb \
  && curl https://raw.githubusercontent.com/gkbrk/slowloris/refs/heads/master/slowloris.py -o /usr/local/bin/slowloris \
  && chmod +x /usr/local/bin/slowloris \
  && apt-get clean \
