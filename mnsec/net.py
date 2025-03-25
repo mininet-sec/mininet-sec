@@ -193,7 +193,7 @@ class Mininet_sec(Mininet):
             sw_opts = self.topo_dict["switches"][switch] or {}
             cls = SWITCHES[sw_opts.get("kind", settings.get("switches_kind", SWITCHDEF))]
             topo.addSwitch(switch, cls=cls, **sw_opts)
-        for link in self.topo_dict.get("links", {}):
+        for link in self.topo_dict.get("links", []):
             cls = LINKS[link.get("kind", settings.get("links_kind", LINKDEF))]
             node1 = link.pop("node1")
             node2 = link.pop("node2")
