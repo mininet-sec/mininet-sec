@@ -280,8 +280,8 @@ class K8sPod(Node):
             proto = kwargs.get("proto", "tcp")
             if not port2:
                 continue
-            self.cmd(f"socat -lpmnsec-socat-unix-local-{port2}-{proto} unix-listen:/tmp/local-{port2}-{proto}.sock,fork {proto}:127.0.0.1:{port2} >/dev/null 2>&1 &", shell=True)
-            self.cmd(f"ip netns exec mgmt socat -lpmnsec-socat-local-{port2}-{proto}-unix {proto}-listen:{port2},bind=0.0.0.0,reuseaddr,fork unix-connect:/tmp/local-{port2}-{proto}.sock >/dev/null 2>&1 &", shell=True)
+            self.cmd(f"socat -s -lpmnsec-socat-unix-local-{port2}-{proto} unix-listen:/tmp/local-{port2}-{proto}.sock,fork {proto}:127.0.0.1:{port2} >/dev/null 2>&1 &", shell=True)
+            self.cmd(f"ip netns exec mgmt socat -s -lpmnsec-socat-local-{port2}-{proto}-unix {proto}-listen:{port2},bind=0.0.0.0,reuseaddr,fork unix-connect:/tmp/local-{port2}-{proto}.sock >/dev/null 2>&1 &", shell=True)
 
     def delete_port_forward(self):
         """Delete port forward."""
