@@ -266,6 +266,7 @@ class K8sPod(Node):
 
     def setup_port_forward(self):
         """Create port forward for the pod."""
+        homeDir = self.params.get("homeDir", "/tmp")
         for kwargs in self.k8s_publish:
             try:
                 p = portforward(host2=self.k8s_pod_ip, **kwargs)
@@ -280,8 +281,9 @@ class K8sPod(Node):
             proto = kwargs.get("proto", "tcp")
             if not port2:
                 continue
-            self.cmd(f"socat -s -lpmnsec-socat-unix-local-{port2}-{proto} unix-listen:/tmp/local-{port2}-{proto}.sock,fork {proto}:127.0.0.1:{port2} >/dev/null 2>&1 &", shell=True)
-            self.cmd(f"ip netns exec mgmt socat -s -lpmnsec-socat-local-{port2}-{proto}-unix {proto}-listen:{port2},bind=0.0.0.0,reuseaddr,fork unix-connect:/tmp/local-{port2}-{proto}.sock >/dev/null 2>&1 &", shell=True)
+            filename = f"{homeDir}/local-{port2}-{proto}"
+            self.cmd(f"socat -s -lpmnsec-socat-unix-local-{port2}-{proto} unix-listen:{filename}.sock,fork {proto}:127.0.0.1:{port2} >{filename}.log 2>&1 &", shell=True)
+            self.cmd(f"ip netns exec mgmt socat -s -lpmnsec-socat-local-{port2}-{proto}-unix {proto}-listen:{port2},bind=0.0.0.0,reuseaddr,fork unix-connect:{filename}.sock >{filename}.log 2>&1 &", shell=True)
 
     def delete_port_forward(self):
         """Delete port forward."""
