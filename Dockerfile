@@ -8,7 +8,7 @@ RUN apt-get update \
 		xterm iperf socat telnet tmux git iptables-persistent traceroute \
 		bridge-utils nmap hping3 mininet iperf3 hydra iproute2 \
 		python3-pip libpq-dev openvswitch-switch openvswitch-testcontroller curl jq d-itg \
-		gcc python3-dev vim hashcat dstat \
+		gcc python3-dev vim hashcat dstat ifstat \
 		apache2 ntp ssh bind9 dovecot-imapd dovecot-pop3d \
  && rm -f /usr/lib/python3.11/EXTERNALLY-MANAGED \
  && cd /tmp \
