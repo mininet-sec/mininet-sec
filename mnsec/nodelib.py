@@ -62,9 +62,12 @@ class Host( Node ):
 
     def setup_published_ports(self):
         """Setup published ports using socat."""
+        self.published_ports = []
+        homeDir = self.params.get("homeDir", "/tmp")
         for kw in parse_publish(self.params.get("publish", [])):
             h1, p1, proto, p2 = kw["host1"], kw["port1"], kw["proto"], kw["port2"]
-            socat_filename = f"/tmp/mnsec/local-{h1}-{p1}-{proto}.sock"
+            socat_filename = f"{homeDir}/local-{h1}-{p1}-{proto}.sock"
+            log_file = f"{homeDir}/local-{h1}-{p1}-{proto}.log"
             try:
                 pf = portforward(
                     host1=h1,
@@ -77,7 +80,8 @@ class Host( Node ):
                 error(f"\n[ERROR] Failed to create port forward: kw={kw} -- {exc}")
                 continue
             kw["portforward"] = pf
-            self.cmd(f"socat -lpmnsec-socat-unix-{h1}-{p1}-{proto} unix-listen:{socat_filename},fork {proto}:127.0.0.1:{p2} >/dev/null 2>&1 &", shell=True)
+            self.published_ports.append(kw)
+            self.cmd(f"socat -s -lpmnsec-socat-unix-{h1}-{p1}-{proto} unix-listen:{socat_filename},fork {proto}:127.0.0.1:{p2} >{log_file} 2>&1 &", shell=True)
 
 
 class LinuxBridge(MN_Lxbr):
