@@ -203,7 +203,7 @@ class Mininet_sec(Mininet):
     def processTopoSettings(self):
         """When using the yaml topology, process settings attribute"""
         if not self.topo_dict.get("settings") or not isinstance(self.topo_dict["settings"], dict):
-            return
+            return {}
         mnsec_attrs = [
             "apps",
             "workDir",
