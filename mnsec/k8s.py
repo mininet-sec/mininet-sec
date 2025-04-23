@@ -62,11 +62,14 @@ class K8sPod(Node):
         env=[],
         publish=[],
         waitRunning=False,
+        isolateControlNet=True,
         **params,
     ):
         """Instantiate the Pod
         waitRunning: wait for Pod to be Running? False: dont wait; True:
             wait indefinitely; Int: time to  wait (sec)
+        isolateControlNet: should the control network of the Pod be isolated on
+            a different network namespace? Defaults: True
         env: environment variables for the container. Example:
             env=[{"name": "XPTO", "value": "foobar"}]
         command: command to be executed as the container entrypoint. Example:
@@ -94,6 +97,7 @@ class K8sPod(Node):
         self.k8s_publish = parse_publish(publish)
         self.port_forward = []
         self.waitRunning = waitRunning
+        self.isolateControlNet = isolateControlNet
         if self.k8s_publish and not self.waitRunning:
             self.waitRunning = True
         img = DISPLAY_IMG.get(image.rsplit(":", 1)[0])
@@ -177,7 +181,8 @@ class K8sPod(Node):
         # setup shell
         self.setup_shell()
         # change control network to mgmt namespace
-        self.setup_mgmt_namespace()
+        if self.isolateControlNet:
+            self.setup_mgmt_namespace()
         # setup port forward
         self.setup_port_forward()
 
@@ -283,7 +288,10 @@ class K8sPod(Node):
                 continue
             filename = f"{homeDir}/local-{port2}-{proto}"
             self.cmd(f"socat -s -lpmnsec-socat-unix-local-{port2}-{proto} unix-listen:{filename}.sock,fork {proto}:127.0.0.1:{port2} >{filename}.log 2>&1 &", shell=True)
-            self.cmd(f"ip netns exec mgmt socat -s -lpmnsec-socat-local-{port2}-{proto}-unix {proto}-listen:{port2},bind=0.0.0.0,reuseaddr,fork unix-connect:{filename}.sock >{filename}.log 2>&1 &", shell=True)
+            cmd_prefix = ""
+            if self.isolateControlNet:
+                cmd_prefix = "ip netns exec mgmt "
+            self.cmd(f"{cmd_prefix}socat -s -lpmnsec-socat-local-{port2}-{proto}-unix {proto}-listen:{port2},bind=0.0.0.0,reuseaddr,fork unix-connect:{filename}.sock >{filename}.log 2>&1 &", shell=True)
 
     def delete_port_forward(self):
         """Delete port forward."""
