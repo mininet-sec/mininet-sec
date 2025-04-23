@@ -279,6 +279,8 @@ class K8sPod(Node):
                 error(f"\n[ERROR] Failed to create port forward: host2={self.k8s_pod_ip} kwargs={kwargs} -- {exc}")
                 continue
             kwargs["portforward"] = p
+            if not self.isolateControlNet:
+                continue
             # Since the services will not run on mgmt interface anymore
             # we need to create a proxy on the Pod to expose the service there
             # using socat (if available)
@@ -288,10 +290,7 @@ class K8sPod(Node):
                 continue
             filename = f"{homeDir}/local-{port2}-{proto}"
             self.cmd(f"socat -s -lpmnsec-socat-unix-local-{port2}-{proto} unix-listen:{filename}.sock,fork {proto}:127.0.0.1:{port2} >{filename}.log 2>&1 &", shell=True)
-            cmd_prefix = ""
-            if self.isolateControlNet:
-                cmd_prefix = "ip netns exec mgmt "
-            self.cmd(f"{cmd_prefix}socat -s -lpmnsec-socat-local-{port2}-{proto}-unix {proto}-listen:{port2},bind=0.0.0.0,reuseaddr,fork unix-connect:{filename}.sock >{filename}.log 2>&1 &", shell=True)
+            self.cmd(f"ip netns exec mgmt socat -s -lpmnsec-socat-local-{port2}-{proto}-unix {proto}-listen:{port2},bind=0.0.0.0,reuseaddr,fork unix-connect:{filename}.sock >{filename}.log 2>&1 &", shell=True)
 
     def delete_port_forward(self):
         """Delete port forward."""
