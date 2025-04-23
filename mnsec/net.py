@@ -182,7 +182,7 @@ class Mininet_sec(Mininet):
             self.topo_dict = yaml.load(open(topoFile), Loader=yaml.Loader)
         except Exception as exc:
             raise ValueError(f"Invalid topology file. Error reading topology: {exc}")
-        settings = self.topo_dict.get("settings", {})
+        settings = self.topo_dict.get("settings", {}) or {}
         topo = Topo()
         for host in self.topo_dict.get("hosts", {}):
             host_opts = self.topo_dict["hosts"][host] or {}
