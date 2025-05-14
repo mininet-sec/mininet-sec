@@ -28,4 +28,4 @@ def portforward(port1=None, host2=None, port2=None, proto="tcp", host1="0.0.0.0"
 @atexit.register
 def _cleanup_all():
     with contextlib.suppress(Exception):
-        subprocess.run(["/usr/bin/pkill", "-f", "socat -lpmnsec-socat"])
+        subprocess.run(["/usr/bin/pkill", "-9", "-f", "socat -s -lpmnsec-socat"])

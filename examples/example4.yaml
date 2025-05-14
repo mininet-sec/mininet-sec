@@ -1,0 +1,117 @@
+name: Example topology with multiple hosts, suricata, secflood and firewall
+hosts:
+  firewall1:
+    kind: iptables
+    group: OrgA
+    rules_v4:
+      filter:
+        - :INPUT DROP
+        - :OUTPUT ACCEPT
+        - :FORWARD DROP
+        - -A INPUT -j ACCEPT
+        - -A FORWARD -j ACCEPT
+
+  cliente1:
+    ip: 198.51.100.10/25
+    defaultRoute: via 198.51.100.126
+    group: OrgA
+   
+  server1:
+    ip: 198.51.100.129/25
+    defaultRoute: via 198.51.100.254
+    group: OrgA
+    
+  ids1:
+    kind: k8spod
+    image: hackinsdn/suricata:latest
+    env:
+      - name: SURICATA_IFACE
+        value: br0
+      - name: SURICATA_HOME_NET
+        value: 198.51.100.0/24
+    postStart:
+      - brctl addbr br0
+      - brctl addif br0 ids1-eth0
+      - brctl addif br0 ids1-eth1
+      - ip link set dev br0 up
+    group: OrgA
+    
+  secflood1:
+    kind: k8spod
+    image: hackinsdn/secflood:latest
+    ip: 198.51.100.20/25
+    routes:
+      - - 198.51.100.0/24
+        - 198.51.100.126
+      - - 203.0.113.0/24
+        - 198.51.100.126
+    env:
+      - name: SECFLOOD_INTF_INSIDE
+        value: secflood1-eth0
+      - name: SECFLOOD_GW_INSIDE
+        value: 198.51.100.126
+      - name: SECFLOOD_INTF_OUTSIDE
+        value: secflood1-eth1
+    publish:
+      - 8443:443
+    group: OrgA
+    
+  outside1:
+    ip: 203.0.113.1/24
+    kind: k8spod
+    image: hackinsdn/debian:latest
+    defaultRoute: via 203.0.113.254
+    group: Internet
+
+  outside2:
+    ip: 203.0.113.2/24
+    defaultRoute: via 203.0.113.254
+    group: Internet
+
+  outside3:
+    ip: 203.0.113.3/24
+    defaultRoute: via 203.0.113.254
+    group: Internet
+    
+switches:
+  switch1:
+    kind: lxbr
+    group: OrgA
+  switch2:
+    kind: lxbr
+    group: Internet
+    
+links:       
+  - node1: firewall1
+    node2: server1
+    ipv4_node1: 198.51.100.254/25
+    
+  - node1: firewall1
+    node2: switch1
+    ipv4_node1: 198.51.100.126/25
+
+  - node1: secflood1
+    node2: switch1
+    
+  - node1: cliente1
+    node2: switch1
+    
+  - node1: outside1
+    node2: switch2
+    
+  - node1: outside2
+    node2: switch2
+    
+  - node1: outside3
+    node2: switch2
+
+  - node1: secflood1
+    node2: switch2
+    ipv4_node1: 203.0.113.20/24
+    
+  - node1: firewall1
+    node2: ids1
+    ipv4_node1: 203.0.113.254/24
+    
+  - node1: ids1
+    node2: switch2

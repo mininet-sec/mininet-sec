@@ -1,0 +1,84 @@
+name: Lab MISP with Zeek
+settings:
+hosts:
+  h1:
+    ip: 192.168.1.1/24
+    defaultRoute: via 192.168.1.254
+  h2:
+    ip: 192.168.1.2/24
+    defaultRoute: via 192.168.1.254
+  firewall:
+    kind: iptables
+    ip: 192.168.1.254/24
+    rules_v4:
+      filter:
+        - :INPUT DROP
+        - :OUTPUT ACCEPT
+        - :FORWARD DROP
+        - -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+        - -A INPUT -p icmp -j ACCEPT
+        - -A INPUT -s 192.168.1.0/24 -j ACCEPT
+        - -A INPUT -s 192.168.2.0/24 -j ACCEPT
+        - -A FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT
+        - -A FORWARD -p icmp -j ACCEPT
+        - -A FORWARD -s 192.168.1.0/24 -j ACCEPT
+        - -A FORWARD -s 192.168.2.0/24 -j ACCEPT
+  misp:
+    ip: 192.168.2.1/24
+    routes:
+      - - 192.168.0.0/16
+        - 192.168.2.254
+    kind: k8spod
+    image: hackinsdn/misp:latest
+    isolateControlNet: false
+    publish:
+      - 8443:443
+  zeek:
+    ip: 192.168.2.2/24
+    defaultRoute: via 192.168.2.254
+    kind: k8spod
+    image: hackinsdn/zeek:latest
+    env:
+      - name: ZEEK_INTERFACE
+        value: br0
+    postStart:
+      - brctl addbr br0
+      - brctl addif br0 zeek-eth1
+      - brctl addif br0 zeek-eth2
+      - ip link set dev br0 up
+  srv1:
+    ip: 192.168.3.1/24
+    defaultRoute: via 192.168.3.254
+  srv2:
+    ip: 192.168.3.2/24
+    defaultRoute: via 192.168.3.254
+switches:
+  s1:
+    kind: lxbr
+  s2:
+    kind: lxbr
+  s3:
+    kind: lxbr
+links:
+  - node1: h1
+    node2: s1
+  - node1: h2
+    node2: s1
+  - node1: misp
+    node2: s2
+  - node1: srv1
+    node2: s3
+  - node1: srv2
+    node2: s3
+  - node1: zeek
+    node2: s2
+  - node1: zeek
+    node2: s1
+  - node1: firewall
+    node2: zeek
+  - node1: firewall
+    node2: s2
+    ipv4_node1: 192.168.2.254/24
+  - node1: firewall
+    node2: s3
+    ipv4_node1: 192.168.3.254/24

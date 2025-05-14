@@ -9,6 +9,7 @@
 - Added option to allow user to provide an URL with image to be displayed (`img_url`)
 - Added option to allow Mininet-Sec hosts to configure DNS resolvers (`dns_nameservers`)
 - Added option to allow run post startup commands (`postStart`)
+- Added option to run the Kubernetes Pods without isolating the control network (i.e., network provided by Kubernets, usually `eth0`) keeping the control net in the root netns (`isolateControlNet`)
 
 ## [1.1.0] - 2025-01-10
 

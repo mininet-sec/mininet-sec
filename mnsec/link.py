@@ -63,8 +63,8 @@ class VxLanLink(Link):
         runCmd2 = node2.cmd if isinstance(node2, K8sPod) else quietRun
         netns1 = 1 if isinstance(node1, K8sPod) else node1.pid
         netns2 = 1 if isinstance(node2, K8sPod) else node2.pid
-        cmd1Pfx = "ip netns exec mgmt" if isinstance(node1, K8sPod) else ""
-        cmd2Pfx = "ip netns exec mgmt" if isinstance(node2, K8sPod) else ""
+        cmd1Pfx = "ip netns exec mgmt" if getattr(node1, "isolateControlNet", False) else ""
+        cmd2Pfx = "ip netns exec mgmt" if getattr(node2, "isolateControlNet", False) else ""
 
         if deleteIntfs:
             # Delete any old interfaces with the same names
@@ -81,13 +81,11 @@ class VxLanLink(Link):
             f"{cmd1Pfx} ip link add {intfname1} netns {netns1} {l2addr1} "
             f"type vxlan id {vxlan_id} remote {node2_ip} dstport 8472 nolearning",
             shell=True,
-            k8s_mgmt=True,
         )
         cmdOut2 = runCmd2(
             f"{cmd2Pfx} ip link add {intfname2} netns {netns2} {l2addr2} "
             f"type vxlan id {vxlan_id} remote {node1_ip} dstport 8472 nolearning",
             shell=True,
-            k8s_mgmt=True,
         )
 
         if cmdOut1 or cmdOut2:
@@ -152,8 +150,8 @@ class L2tpLink(Link):
         runCmd2 = node2.cmd if isinstance(node2, K8sPod) else quietRun
         netns1 = 1 if isinstance(node1, K8sPod) else node1.pid
         netns2 = 1 if isinstance(node2, K8sPod) else node2.pid
-        cmd1Pfx = "ip netns exec mgmt" if isinstance(node1, K8sPod) else ""
-        cmd2Pfx = "ip netns exec mgmt" if isinstance(node2, K8sPod) else ""
+        cmd1Pfx = "ip netns exec mgmt" if getattr(node1, "isolateControlNet", False) else ""
+        cmd2Pfx = "ip netns exec mgmt" if getattr(node2, "isolateControlNet", False) else ""
         l2addr1 = f"addr {addr1}" if addr1 else ""
         l2addr2 = f"addr {addr2}" if addr2 else ""
 
@@ -174,13 +172,11 @@ class L2tpLink(Link):
             f"{cmd1Pfx} ip l2tp add tunnel local {node1_ip} remote {node2_ip} "
             f"tunnel_id {l2tp_id} peer_tunnel_id {l2tp_id} udp_dport {l2tp_port} udp_sport {l2tp_port}",
             shell=True,
-            k8s_mgmt=True,
         )
         cmdOut2 = runCmd2(
             f"{cmd2Pfx} ip l2tp add tunnel local {node2_ip} remote {node1_ip} "
             f"tunnel_id {l2tp_id} peer_tunnel_id {l2tp_id} udp_dport {l2tp_port} udp_sport {l2tp_port}",
             shell=True,
-            k8s_mgmt=True,
         )
 
         if cmdOut1 or cmdOut2:
@@ -191,12 +187,10 @@ class L2tpLink(Link):
         cmdOut1 = runCmd1(
             f"{cmd1Pfx} ip l2tp add session name {intfname1} tunnel_id {l2tp_id} session_id {l2tp_id} peer_session_id {l2tp_id} ",
             shell=True,
-            k8s_mgmt=True,
         )
         cmdOut2 = runCmd2(
             f"{cmd2Pfx} ip l2tp add session name {intfname2} tunnel_id {l2tp_id} session_id {l2tp_id} peer_session_id {l2tp_id} ",
             shell=True,
-            k8s_mgmt=True,
         )
 
         if cmdOut1 or cmdOut2:
@@ -207,12 +201,10 @@ class L2tpLink(Link):
         cmdOut1 = runCmd1(
             f"{cmd1Pfx} ip link set netns {netns1} {l2addr1} dev {intfname1}",
             shell=True,
-            k8s_mgmt=True,
         )
         cmdOut2 = runCmd2(
             f"{cmd2Pfx} ip link set netns {netns2} {l2addr2} dev {intfname2}",
             shell=True,
-            k8s_mgmt=True,
         )
 
         if cmdOut1 or cmdOut2:
@@ -226,8 +218,8 @@ class L2tpLink(Link):
         node2 = self.intf2.node
         runCmd1 = node1.cmd if isinstance(node1, K8sPod) else quietRun
         runCmd2 = node2.cmd if isinstance(node2, K8sPod) else quietRun
-        cmd1Pfx = "ip netns exec mgmt" if isinstance(node1, K8sPod) else ""
-        cmd2Pfx = "ip netns exec mgmt" if isinstance(node2, K8sPod) else ""
+        cmd1Pfx = "ip netns exec mgmt" if getattr(node1, "isolateControlNet", False) else ""
+        cmd2Pfx = "ip netns exec mgmt" if getattr(node2, "isolateControlNet", False) else ""
         if self.intf1.name in self.l2tp_intf_tun:
             runCmd1(f"{cmd1Pfx} ip l2tp del tunnel tunnel_id {self.l2tp_intf_tun[self.intf1.name]}", shell=True)
         if self.intf2.name in self.l2tp_intf_tun:
