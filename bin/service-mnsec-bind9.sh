@@ -111,7 +111,7 @@ function add_zone(){
 	fi
 
 	# check if zone name is valid
-	if ! echo "$ZONE" | egrep -q "^([a-zA-Z0-9-]+.)+[a-zA-Z0-9]$"; then
+	if ! echo "$ZONE" | egrep -q "^([a-zA-Z0-9-]+.)+[a-zA-Z0-9]+$"; then
 		echo "Invalid Zone name: $ZONE"
 		exit 0
 	fi
