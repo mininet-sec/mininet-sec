@@ -124,10 +124,14 @@ class APIServer:
             State('cytoscape', 'elements'),
         )
         def updateNodeLabel(data, new_label, elements):
-            if data:
-                for ele in elements:
-                    if ele["data"]["id"] == data[-1]["id"]:
-                        ele["data"]["label"] = str(new_label)
+            if not data or data[-1]["label"] == new_label:
+                return elements
+            for ele in elements:
+                if ele["data"]["id"] == data[-1]["id"]:
+                    ele["data"]["label"] = str(new_label)
+                    if ele["data"]["type"] == "group":
+                        self.mnsec.updateGroupName(data[-1]["label"], new_label)
+                    break
             return elements
 
         @callback(
@@ -153,7 +157,9 @@ class APIServer:
             Input('cytoscape', 'selectedNodeData')
         )
         def displayChangeNodeData(data):
-            return False if data and len(data) == 1 else True
+            if data and len(data) == 1 and data[0].get("type") == "group":
+                return False
+            return True
 
         @callback(
             Output('cytoscape', 'stylesheet'),
@@ -182,11 +188,12 @@ class APIServer:
             }
             for ele in elements:
                 data = ele["data"]
-                if "source" in data or "group" in data:
+                if "source" in data or data.get("type") == "group":
                     continue
                 ele_type = "hosts" if data["type"] == "host" else "switches"
                 node = self.mnsec.nameToNode.get(data["id"])
                 if not node:
+                    warning(f"Ignoring element id not found on mnsec {data=}\n")
                     continue
                 topo_dict[ele_type][node.name] = node.params
                 kind = self.mnsec.getObjKind(node)
@@ -219,7 +226,7 @@ class APIServer:
                     link_dict["params2"] = link.intf2.params
                 topo_dict["links"].append(link_dict)
 
-            return {"content": yaml.dump(topo_dict, sort_keys=False), "filename": "mytopology.json"}
+            return {"content": yaml.dump(topo_dict, sort_keys=False), "filename": "mytopology.yaml"}
 
 
         gtag_str = (
@@ -233,6 +240,66 @@ class APIServer:
         clientside_callback(
             """
             function(input1) {
+              let timer;
+              let selectedNodes;
+              let hasTapHold = false;
+              const duration = 500;
+              let tapCount = 0;
+              let dblTapTimer;
+              const dblTapDelay = 300;
+              document.querySelectorAll('.cy-context-menus-cxt-menuitem').forEach(el=>el.addEventListener("touchend", function(){el.click()}));
+              cy.on('touchstart', 'node', function(evt) {
+                timer = setTimeout(function() {
+                  hasTapHold = true;
+                  evt.target.select();
+	              selectedNodes = cy.nodes(":selected");
+                }, duration);
+              });
+              cy.on('touchend', 'node', function(evt) {
+                if (hasTapHold) {
+                  // make nodes immutable so that they cannot be unselect
+                  selectedNodes.forEach((node) => {
+                    node.unselectify();
+                  });
+                  // resume nodes mutability
+                  setTimeout(function() {
+                    selectedNodes.forEach((node) => {
+                      node.selectify();
+                    });
+                    selectedNodes = [];
+                  }, 300);
+                } else {
+                  tapCount++;
+                  if (tapCount === 1) {
+                    dblTapTimer = setTimeout(() => {
+                      tapCount = 0;
+                    }, dblTapDelay);
+                  } else if (tapCount > 1) {
+                    clearTimeout(dblTapTimer);
+                    // Double tap action
+                    window.open('/xterm/' + evt.target.id(), '_blank');
+                    tapCount = 0;
+                  }
+                }
+                clearTimeout(timer);
+                hasTapHold = false;
+              });
+              cy.on('touchmove', 'node', function(evt) {
+                clearTimeout(timer);
+                hasTapHold = false;
+                selectedNodes = [];
+              });
+
+              cy.on('select unselect', 'node', function(evt) {
+                const link = document.querySelector('#link-open-term');
+                link.style.display = "none";
+                link.href = '#';
+	            const selectedNodes = cy.nodes(":selected");
+                if (selectedNodes.length === 1 && selectedNodes[0].data("type") !== "group") {
+                  link.style.display = "block";
+                  link.href = '/xterm/' + selectedNodes[0].data("label");
+                }
+              });
               cy.on('dblclick', function(evt) {
                 window.open('/xterm/' + evt.target.id(), '_blank');
               });
@@ -244,13 +311,78 @@ class APIServer:
             Input('cytoscape', 'id')
         )
 
+        clientside_callback(
+            """
+            function(typeStr) {
+              const nodeType = typeStr.split("/");
+              var nodeId = cy.nodes().length + 1;
+              let nodeName = prompt("Node name (only letters and numbers)", `n${nodeId}`);
+              if (!nodeName) {
+                return "";
+              }
+              nodeName = nodeName.replace(/[^a-zA-Z0-9]/g, '');
+              var result = requestAddNode(nodeName, nodeType[1]);
+              if (result) {
+                result.then(function(displayImg){
+                  if (!displayImg) {
+                    return "";
+                  }
+                  cy.add({
+                    data: {
+                      id: nodeName,
+                      label: nodeName,
+                      type: nodeType[0],
+                      url: `/assets/${displayImg}`,
+                    },
+                    classes: ['rectangle'],
+                  });
+                });
+              }
+              return "";
+            }
+            """,
+            Output('btn-add-node', 'value'),
+            Input("btn-add-node", "value"),
+            prevent_initial_call=True,
+        )
+
+        clientside_callback(
+            """
+            function(input1) {
+              mnsecAddLink();
+              return dash_clientside.no_update;
+            }
+            """,
+            Output('btn-add-link', 'id'),
+            Input("btn-add-link", "n_clicks"),
+            prevent_initial_call=True,
+        )
+
+        clientside_callback(
+            """
+            function(input1) {
+              mnsecAddGroup();
+              return dash_clientside.no_update;
+            }
+            """,
+            Output('btn-add-group', 'id'),
+            Input("btn-add-group", "n_clicks"),
+            prevent_initial_call=True,
+        )
+
         self.server.add_url_rule("/topology", None, self.get_topology, methods=["GET"])
         self.server.add_url_rule("/ifindexes", None, self.get_ifindexes, methods=["GET"])
         self.server.add_url_rule("/add_node", None, self.add_node, methods=["POST"])
         self.server.add_url_rule("/add_link", None, self.add_link, methods=["POST"])
+        self.server.add_url_rule("/add_group", None, self.add_group, methods=["POST"])
         self.server.add_url_rule("/xterm/<host>", None, self.xterm, methods=["GET"])
 
+
     def setup(self):
+        self.app.layout = self.serve_layout
+        self.topology_loaded = True
+
+    def serve_layout(self):
         layout = "cose"
         elements = []
         groups = {}
@@ -411,7 +543,6 @@ class APIServer:
             {
                 'selector': '.circle',
                 'style': {
-                    'shape': 'circle',
                     'background-color': 'white',
                     'background-width': '90%',
                     'background-height': '90%',
@@ -440,14 +571,44 @@ class APIServer:
             },
         ]
 
-        self.app.layout = html.Div([
+        return_layout = html.Div([
             dcc.Location(id='url'),
             dcc.Interval(id='interval-loading', interval=2000, disabled=True),
             html.Div(
                 className="eight columns",
                 id="topology",
                 children = [
-                    html.Img(src=get_asset_url('mininet-sec.png')),
+                    html.Div(
+                        className="navibar",
+                        id="topNaviBar",
+                        children = [
+                            html.Img(src=get_asset_url('mininet-sec.png')),
+                            html.Div(
+                                className="menubar",
+                                id="menuNaviBar",
+                                children = [
+                                    html.A(
+                                        html.Button("Term", id="btn-open-term"),
+                                        href="#", target="_blank", id="link-open-term", style={"display": "none"},
+                                    ),
+                                    dcc.Dropdown(
+                                        id="btn-add-node",
+                                        placeholder="+ Node",
+                                        className="menudropdown",
+                                        clearable=False,
+                                        options=[
+                                            {"label": "Host", "value": "host/proc"},
+                                            {"label": "OVS Switch", "value": "switch/ovs"},
+                                            {"label": "Bridge Switch", "value": "switch/lxbr"},
+                                            {"label": "Pod K8s", "value": "host/k8spod"},
+                                        ],
+                                    ),
+                                    html.Button("+ Link", id="btn-add-link"),
+                                    html.Button("+ Group", id="btn-add-group"),
+                                ],
+                            ),
+                        ],
+                    ),
                     cyto.Cytoscape(
                         id="cytoscape",
                         layout={"name": layout, "fit": True},
@@ -510,8 +671,8 @@ class APIServer:
                                                             html.Br(),
                                                             html.I("Change node data:"),
                                                             html.Br(),
+                                                            html.Pre(id='change-node-id'),
                                                             html.Div(id="change-node-data", hidden=True, children=[
-                                                                html.Pre(id='change-node-id'),
                                                                 'Node Label:',
                                                                 dcc.Input(id='input-node-label', type='text', debounce=True, value="")
                                                             ])
@@ -682,8 +843,7 @@ class APIServer:
             except:
                 pass
 
-        self.topology_loaded = True
-
+        return return_layout
 
     def get_topology(self):
         topo = {'nodes':[], 'links':[]}
@@ -722,20 +882,16 @@ class APIServer:
                 return f"Missing field {req_field} on request", 400
         if data["name"] in self.mnsec:
             return f"Node already exists: {data['name']}", 400
-        if data["type"] == "host":
-            try:
-                host = self.mnsec.addHost(data["name"])
-                assert host
-                self.mnsec.startHost(host)
-            except Exception as exc:
-                return {"result": f"failed to add host: {exc}"}, 424
-        elif data["type"] == "switch":
-            try:
-                switch = self.mnsec.addSwitch(data["name"])
-                assert switch
-            except Exception as exc:
-                return {"result": f"failed to add switch: {exc}"}, 424
-        return {"result": "ok"}, 200
+        params = data.get("params")
+        if not isinstance(params, dict):
+            params = {}
+        try:
+            node = self.mnsec.addNodeKind(data["name"], data["type"], **params)
+            assert node
+        except Exception as exc:
+            return f"failed to add node: {exc}", 424
+        display_image = getattr(node, "display_image", "computer.png")
+        return display_image, 200
 
     def add_link(self):
         data = flask.request.get_json(force=True)
@@ -759,6 +915,21 @@ class APIServer:
 
         return {"intf1": link.intf1.name, "intf2": link.intf2.name}, 200
 
+    def add_group(self):
+        data = flask.request.get_json(force=True)
+        nodes = data.get("nodes")
+        group = data.get("group")
+        if not nodes or not isinstance(nodes, list):
+            return "Invalid/missing nodes to add_group", 400
+        if not group:
+            return "Invalid/missing group name to add_group", 400
+        for node in nodes:
+            node_obj = self.mnsec.get(node)
+            if not node_obj:
+                return f"Invalid {node} to add_group", 400
+            node_obj.params["group"] = group
+        return {"result": "all nodes added to group"}, 200
+
     def xterm(self, host):
         """Open xterm for a node"""
         if not host or host not in self.mnsec:
@@ -769,7 +940,7 @@ class APIServer:
         info(f"APIServer listening on port {self.listen}:{self.port}\n")
         try:
             #self.server.serve_forever()
-            self.app.run(host=self.listen, port=self.port, debug=True, use_reloader=False)
+            self.app.run(host=self.listen, port=self.port, use_reloader=False)
         except SystemExit:
             pass
         except Exception as error:
