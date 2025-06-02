@@ -1,9 +1,9 @@
-function requestAddNode(nodeName, nodeType) {
+function requestAddNode(nodeName, nodeType, params) {
     var result = false;
     const requestOptions = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({name: nodeName, type: nodeType})
+        body: JSON.stringify({name: nodeName, type: nodeType, params: params})
     };
     const request = async () => {
         const response = await fetch('/add_node', requestOptions);
@@ -111,7 +111,7 @@ window.dashCytoscapeFunctions = Object.assign(
         mnsec_add_host: function (event) {
             var pos = event.position || event.cyPosition;
 	    var hostId = cy.nodes("[type = 'host']").length + 1;
-            var result = requestAddNode(`h${hostId}`, "proc");
+            var result = requestAddNode(`h${hostId}`, "proc", {});
             if (result) {
               result.then(function(displayImg){
                 if (!displayImg) {
@@ -136,7 +136,7 @@ window.dashCytoscapeFunctions = Object.assign(
         mnsec_add_switch: function (event) {
             var pos = event.position || event.cyPosition;
 	    var switchId = cy.nodes("[type = 'switch']").length + 1;
-            var result = requestAddNode(`s${switchId}`, "ovs");
+            var result = requestAddNode(`s${switchId}`, "ovs", {});
             if (result) {
               result.then(function(displayImg){
                 if (!displayImg) {

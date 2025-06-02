@@ -383,14 +383,19 @@ class Mininet_sec(Mininet):
         return fw
 
     def addNodeKind(self, name, kind, **params):
+        info(f"\nAdding node {name=} {kind=} {params=}\n")
         cls = HOSTS.get(kind)
         if cls:
             host = self.addHost(name, cls=cls, **params)
+            if hasattr( host, 'post_startup' ):
+                host.post_startup()
             self.startHost(host)
             return host
         cls = SWITCHES.get(kind)
         if cls:
-            return self.addSwitch(name, cls=cls, **params)
+            switch = self.addSwitch(name, cls=cls, **params)
+            switch.start( self.controllers )
+            return switch
         raise ValueError(f"Invalid Node Type: {kind}")
 
     def updateGroupName(self, oldName, newName):

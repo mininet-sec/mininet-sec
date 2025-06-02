@@ -314,16 +314,37 @@ class APIServer:
         clientside_callback(
             """
             function(typeStr) {
+              const inputEle = document.querySelector('#btn-add-node input');
+              inputEle.disabled = true;
               const nodeType = typeStr.split("/");
               var nodeId = cy.nodes().length + 1;
               let nodeName = prompt("Node name (only letters and numbers)", `n${nodeId}`);
               if (!nodeName) {
                 return "";
               }
-              nodeName = nodeName.replace(/[^a-zA-Z0-9]/g, '');
-              var result = requestAddNode(nodeName, nodeType[1]);
+              nodeName = nodeName.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+              let nodeParams = prompt("Node parameters (comma-separated name=value pairs. Example: image='hackinsdn/debian:latest', group='group1'):");
+              const params = {};
+              if (nodeParams) {
+                nodeParams.split(',').forEach(function (pair) {
+                  const [name, value] = pair.split('=');
+                  if (name && value) {
+                    let newValue;
+                    try {
+                      newValue = JSON.parse(value.trim());
+                    } catch (error) {
+                      newValue = value.trim();
+                    }
+                    params[name.trim()] = newValue;
+                  }
+                });
+              }
+              var result = requestAddNode(nodeName, nodeType[1], params);
               if (result) {
+                const loadingAddNode = document.querySelector('#loading-add-node');
+                loadingAddNode.style.display = "flex";
                 result.then(function(displayImg){
+                  inputEle.disabled = false;
                   if (!displayImg) {
                     return "";
                   }
@@ -336,12 +357,25 @@ class APIServer:
                     },
                     classes: ['rectangle'],
                   });
+                  loadingAddNode.style.display = "none";
                 });
+                return "";
               }
               return "";
             }
             """,
             Output('btn-add-node', 'value'),
+            Input("btn-add-node", "value"),
+            prevent_initial_call=True,
+        )
+
+        clientside_callback(
+            """
+            function(input1) {
+              return 'show';
+            }
+            """,
+            Output('loading-add-node', 'display'),
             Input("btn-add-node", "value"),
             prevent_initial_call=True,
         )
@@ -587,6 +621,7 @@ class APIServer:
                                 className="menubar",
                                 id="menuNaviBar",
                                 children = [
+                                    dcc.Loading(id="loading-add-node", display='hide'),
                                     html.A(
                                         html.Button("Term", id="btn-open-term"),
                                         href="#", target="_blank", id="link-open-term", style={"display": "none"},
@@ -920,7 +955,7 @@ class APIServer:
         nodes = data.get("nodes")
         group = data.get("group")
         if not nodes or not isinstance(nodes, list):
-            return "Invalid/missing nodes to add_group", 400
+            return "Invalid/missing nodes to add_group. Please select the nodes first!", 400
         if not group:
             return "Invalid/missing group name to add_group", 400
         for node in nodes:
@@ -940,7 +975,7 @@ class APIServer:
         info(f"APIServer listening on port {self.listen}:{self.port}\n")
         try:
             #self.server.serve_forever()
-            self.app.run(host=self.listen, port=self.port, use_reloader=False)
+            self.app.run(host=self.listen, port=self.port, debug=True, use_reloader=False)
         except SystemExit:
             pass
         except Exception as error:
