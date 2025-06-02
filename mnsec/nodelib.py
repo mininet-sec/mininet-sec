@@ -88,6 +88,10 @@ class LinuxBridge(MN_Lxbr):
     """Mininet-Sec linux bridge."""
     display_image = "switch.png"
 
+    def attach( self, intf ):
+        "Connect a data port"
+        self.cmd( 'brctl addif', self, intf )
+
 
 class IPTablesFirewall( Node ):
     "A Node with IPTables Linux Firewall."

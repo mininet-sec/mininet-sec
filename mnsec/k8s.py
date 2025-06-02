@@ -84,6 +84,8 @@ class K8sPod(Node):
             publish=['8080:80', '127.0.0.1:5353:53/udp', ...]
 
         """
+        if not self.initialized:
+            raise ValueError("Cannot instantiate kubernetes nodes: kubectl not configured!")
         if self.tag is None:
             self.tag = uuid4().hex[:14]
         self.k8s_name = f"mnsec-{name}-{self.tag}"

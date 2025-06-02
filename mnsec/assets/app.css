@@ -13,3 +13,59 @@
     border-top: thin lightgrey solid;
     margin-top: 10px;
 }
+
+.navibar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5em;
+    padding: .5em;
+}
+
+.menubar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5em;
+    justify-content: flex-end;
+    margin: auto 0 auto auto;
+}
+
+.menubar button {
+    padding: 0 10px;
+}
+
+.menudropdown {
+    text-align: center;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 0.1rem;
+    text-transform: uppercase;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.menudropdown .Select-control {
+    height: 38px;
+    padding: 0 20px;
+    border: 1px solid #bbb;
+    background-color: transparent;
+    border-radius: 4px;
+}
+
+.menudropdown .Select-control .Select-arrow-zone {
+    display: none;
+}
+
+.dash-dropdown div {
+    color: #555;
+}
+
+.dash-dropdown div:hover {
+    border-color: #888;
+    outline: 0;
+    cursor: pointer;
+    color: #333;
+}
+
+#cytoscape {
+    background-color: #eee;
+}
