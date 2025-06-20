@@ -1,24 +1,108 @@
-function requestAddNode(nodeName, nodeType) {
+function requestAddNode(nodeName, nodeType, params) {
     var result = false;
     const requestOptions = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({name: nodeName, type: nodeType})
+        body: JSON.stringify({name: nodeName, type: nodeType, params: params})
     };
-    fetch('/add_node', requestOptions)
-	.then((response) => {
-	    if (!response.ok) {
-		response.text().then(text => { 
-                    alert(`Error while adding node: ${text}`);
-		});
-		return false;
-            }
-	    return response.json();
-        })
-	.then((data) => {
-	    result = data;
-	});
-    return result;
+    const request = async () => {
+        const response = await fetch('/add_node', requestOptions);
+        const resText = await response.text();
+        if (!response.ok) {
+          alert(`Error while adding node: ${resText}`);
+          return "";
+        }
+        return resText;
+    }
+    var resText = request();
+    return resText;
+}
+function mnsecAddLink() {
+  const selectedNodes = cy.nodes(":selected");
+  const selectedNodeIds = selectedNodes.map((node) =>
+      node.data("label")
+  );
+  var source;
+  var target;
+  if (selectedNodes.length === 0) {
+      alert('Error: No nodes selected, cannot add edge');
+  } else if (selectedNodes.length === 1) {
+      source = selectedNodeIds[0];
+      target = selectedNodeIds[0];
+  } else if (selectedNodes.length === 2) {
+      source = selectedNodeIds[0];
+      target = selectedNodeIds[1];
+  } else {
+      alert('Error: more than 2 nodes selected, cannot add edge');
+  }
+  if (source && target) {
+      const requestOptions = {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({node1: source, node2: target})
+      };
+      fetch('/add_link', requestOptions)
+          .then(response => {
+              if (!response.ok) {
+                  response.text().then(text => {
+                      alert(`Error while adding node: ${text}`);
+                  });
+                  return false;
+              }
+              return response.json();
+          })
+          .then(result => {
+              if (!result) {
+                return false;
+              }
+	      const intf1 = result["intf1"].split("-");
+	      const intf2 = result["intf2"].split("-");
+              cy.add({
+                  data: {
+                      id: Date.now(),
+                      source: source,
+                      target: target,
+                      slabel: intf1.at(-1),
+                      tlabel: intf2.at(-1),
+                      source_interface: result["intf1"],
+                      target_interface: result["intf2"],
+                  },
+              });
+          });
+  }
+}
+function mnsecAddGroup() {
+  var groupId = cy.nodes("[type = 'group']").length + 1;
+  let groupName = prompt("Group name (only letters and numbers)", `group-${groupId}`);
+  if (!groupName) {
+    return false;
+  }
+  const selectedNodes = cy.nodes(":selected");
+  const selectedNodeIds = selectedNodes.map((node) =>
+      node.data("label")
+  );
+  const requestOptions = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({nodes: selectedNodeIds, group: groupName})
+  };
+  fetch('/add_group', requestOptions)
+      .then(response => {
+          if (!response.ok) {
+              response.text().then(text => {
+                  alert(`Error while adding group: ${text}`);
+              });
+              return false;
+          }
+          return response.json();
+      })
+      .then(result => {
+          if (!result) {
+             return false;
+          }
+          cy.add({data: {id: groupName, label: groupName, type:"group"}, classes: ["groupnode"]});
+          selectedNodes.move({parent: groupName});
+      });
 }
 window.dashCytoscapeFunctions = Object.assign(
     {},
@@ -27,89 +111,55 @@ window.dashCytoscapeFunctions = Object.assign(
         mnsec_add_host: function (event) {
             var pos = event.position || event.cyPosition;
 	    var hostId = cy.nodes("[type = 'host']").length + 1;
-            cy.add({
-                data: {
-                    group: 'nodes',
+            var result = requestAddNode(`h${hostId}`, "proc", {});
+            if (result) {
+              result.then(function(displayImg){
+                if (!displayImg) {
+                  return "";
+                }
+                cy.add({
+                  data: {
 		    id: `h${hostId}`,
 		    label: `h${hostId}`,
 		    type: "host",
-                },
-                position: {
-                    x: pos.x,
-                    y: pos.y,
-                },
-		classes: ['rectangle'],
-            });
-	    requestAddNode(`h${hostId}`, "host");
+                    url: `/assets/${displayImg}`,
+                  },
+                  position: {
+                      x: pos.x,
+                      y: pos.y,
+                  },
+                  classes: ['rectangle'],
+                });
+              });
+            }
         },
         mnsec_add_switch: function (event) {
             var pos = event.position || event.cyPosition;
 	    var switchId = cy.nodes("[type = 'switch']").length + 1;
-            cy.add({
-                data: {
-                    group: 'nodes',
+            var result = requestAddNode(`s${switchId}`, "ovs", {});
+            if (result) {
+              result.then(function(displayImg){
+                if (!displayImg) {
+                  return "";
+                }
+                cy.add({
+                  data: {
 		    id: `s${switchId}`,
 		    label: `s${switchId}`,
 		    type: "switch",
-                },
-                position: {
-                    x: pos.x,
-                    y: pos.y,
-                },
-		classes: [],
-            });
-	    requestAddNode(`s${switchId}`, "switch");
+                    url: `/assets/${displayImg}`,
+                  },
+                  position: {
+                      x: pos.x,
+                      y: pos.y,
+                  },
+                  classes: ['rectangle'],
+                });
+              });
+            }
         },
         mnsec_add_link: function (event) {
-	    const selectedNodes = cy.nodes(":selected");
-            const selectedNodeIds = selectedNodes.map((node) =>
-                node.data("label")
-            );
-	    var source;
-	    var target;
-            if (selectedNodes.length === 0) {
-                alert('Error: No nodes selected, cannot add edge');
-            } else if (selectedNodes.length === 1) {
-		source = selectedNodeIds[0];
-		target = selectedNodeIds[0];
-            } else if (selectedNodes.length === 2) {
-		source = selectedNodeIds[0];
-		target = selectedNodeIds[1];
-            } else {
-                alert('Error: more than 2 nodes selected, cannot add edge');
-            }
-	    if (source && target) {
-                const requestOptions = {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({node1: source, node2: target})
-                };
-                fetch('/add_link', requestOptions)
-	            .then(response => {
-	                if (!response.ok) {
-		            response.text().then(text => { 
-                                alert(`Error while adding node: ${text}`);
-		            });
-			    return false;
-                        }
-	                return response.json();
-                    })
-	            .then(result => {
-			if (!result) {
-			    return false;
-	                }
-                        cy.add({
-                            data: {
-                                id: Date.now(),
-                                group: 'edges',
-                                source: source,
-                                target: target,
-	                	    slabel: result["intf1"],
-	                	    tlabel: result["intf2"],
-                            },
-                        });
-		    });
-	    }
+	    mnsecAddLink();
         },
         mnsec_open_xterm: function (event) {
 	    const selectedNodes = cy.nodes(":selected");
@@ -119,9 +169,7 @@ window.dashCytoscapeFunctions = Object.assign(
             selectedNodeIds.forEach((nodeid) => {window.open(`/xterm/${nodeid}`, "_blank");});
         },
         mnsec_add_group: function (event) {
-	    var groupId = cy.nodes("[type = 'group']").length + 1;
-	    cy.add({data: {group: "nodes", id: `group-${groupId}`, label:`group-${groupId}`, type:"group"}, classes: ["groupnode"]});
-	    cy.nodes(":selected").move({parent:  `group-${groupId}`});
+            mnsecAddGroup();
         },
     }
 );

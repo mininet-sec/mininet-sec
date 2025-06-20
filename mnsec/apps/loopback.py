@@ -55,7 +55,7 @@ class LoopbackServer(Application):
 
 AppManager.register_app("loopback", LoopbackServer)
 
-# Check dependency on honeypots module
-if quietRun('python3 -c "import scapy"', shell=True):
-    error("Cannot find required module 'scapy'.\n")
-    sys.exit(1)
+## Check dependency on honeypots module
+#if quietRun('python3 -c "import scapy"', shell=True):
+#    error("Cannot find required module 'scapy'.\n")
+#    sys.exit(1)

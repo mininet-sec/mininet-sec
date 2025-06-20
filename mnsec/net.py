@@ -382,6 +382,27 @@ class Mininet_sec(Mininet):
         fw = self.addHost( name, cls=IPTablesFirewall, **params )
         return fw
 
+    def addNodeKind(self, name, kind, **params):
+        info(f"\nAdding node {name=} {kind=} {params=}\n")
+        cls = HOSTS.get(kind)
+        if cls:
+            host = self.addHost(name, cls=cls, **params)
+            if hasattr( host, 'post_startup' ):
+                host.post_startup()
+            self.startHost(host)
+            return host
+        cls = SWITCHES.get(kind)
+        if cls:
+            switch = self.addSwitch(name, cls=cls, **params)
+            switch.start( self.controllers )
+            return switch
+        raise ValueError(f"Invalid Node Type: {kind}")
+
+    def updateGroupName(self, oldName, newName):
+        for name in self:
+            if self[name].params.get("group") == oldName:
+                self[name].params["group"] = newName
+
     def addLink(
         self, node1, node2, ipv4_node1=None, ipv4_node2=None,
         ipv6_node1=None, ipv6_node2=None, **params
