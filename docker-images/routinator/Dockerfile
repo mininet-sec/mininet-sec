@@ -10,7 +10,7 @@ RUN set -x \
  && curl -fsSL https://packages.nlnetlabs.nl/aptkey.asc | gpg --dearmor -o /usr/share/keyrings/nlnetlabs-archive-keyring.gpg \
  && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/nlnetlabs-archive-keyring.gpg] https://packages.nlnetlabs.nl/linux/debian bullseye main" > /etc/apt/sources.list.d/nlnetlabs.list \
  && apt update \
- && apt install routinator \
+ && apt install -y routinator \
  && rm -rf /var/lib/apt/lists/*
 
 COPY files/ /
