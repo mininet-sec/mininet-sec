@@ -17,5 +17,5 @@ COPY files/ /
 
 EXPOSE 3000/tcp
 
-ENTRYPOINT ["/usr/bin/tini", "--", "/opt/entrypoint.sh"]
+ENTRYPOINT ["/usr/bin/tini", "--", "/entrypoint.sh"]
 CMD ["krill", "-c", "/var/krill/data/krill.conf"]
