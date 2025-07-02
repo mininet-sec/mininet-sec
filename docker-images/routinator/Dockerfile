@@ -20,5 +20,5 @@ EXPOSE 8323/tcp
 EXPOSE 9556/tcp
 
 
-ENTRYPOINT ["/sbin/tini", "--", "routinator"]
+ENTRYPOINT ["/usr/bin/tini", "--", "routinator"]
 CMD ["server", "--rtr", "0.0.0.0:3323", "--http", "0.0.0.0:8323", "--http", "0.0.0.0:9556"]
