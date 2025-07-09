@@ -63,7 +63,7 @@ class K8sPod(Node):
         publish=[],
         waitRunning=False,
         isolateControlNet=True,
-        sysctls={},
+        syscalls={},
         **params,
     ):
         """Instantiate the Pod
@@ -83,7 +83,7 @@ class K8sPod(Node):
             [bind_addr]:local_port:remote_prot[/protocol]. Multiple ports can
             be published/exposed. This option requires waitRunning. Example:
             publish=['8080:80', '127.0.0.1:5353:53/udp', ...]
-        sysctls: dict of name/value attributes that allow to configure kernel
+        syscalls: dict of name/value attributes that allow to configure kernel
             parameters within a Kubernetes Pod using syscalls attribute.
 
         """
