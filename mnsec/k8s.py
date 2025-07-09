@@ -171,7 +171,7 @@ class K8sPod(Node):
                 "apiVersion": "v1",
                 "kind": "Pod",
             }]
-        if self.k8s_syscalls:
+        if self.k8s_sysctls:
             pod_manifest["spec"]["containers"][0]["securityContext"][
                 "sysctls"
             ] = [{"name": k, "value": v} for k, v in self.k8s_sysctls.items()]
