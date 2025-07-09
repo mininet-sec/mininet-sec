@@ -177,9 +177,8 @@ class K8sPod(Node):
                 self.k8s_sysctls = [
                     {"name": k, "value": v} for k, v in self.k8s_sysctls.items()
                 ]
-            pod_manifest["spec"]["containers"][0]["securityContext"][
-                "sysctls"
-            ] = self.k8s_sysctls
+            pod_manifest["spec"].setdefault("securityContext", {})
+            pod_manifest["spec"]["securityContext"]["sysctls"] = self.k8s_sysctls
         pod_manifest_str = json.dumps(pod_manifest)
         out, err, exitcode = errRun(
             f"echo '{pod_manifest_str}' | {KUBECTL} create -f -", shell=True
