@@ -84,7 +84,8 @@ class K8sPod(Node):
             be published/exposed. This option requires waitRunning. Example:
             publish=['8080:80', '127.0.0.1:5353:53/udp', ...]
         sysctls: dict of name/value attributes that allow to configure kernel
-            parameters within a Kubernetes Pod using sysctls attribute.
+            parameters within a Kubernetes Pod using sysctls attribute. It can
+            also be in the same forma as Kubernetes: list of dict (name/value)
 
         """
         if not self.initialized:
@@ -103,7 +104,7 @@ class K8sPod(Node):
         self.port_forward = []
         self.waitRunning = waitRunning
         self.isolateControlNet = isolateControlNet
-        self.k8s_sysctls = sysctls if isinstance(sysctls, dict) else {}
+        self.k8s_sysctls = sysctls
         if self.k8s_publish and not self.waitRunning:
             self.waitRunning = True
         img = DISPLAY_IMG.get(image.rsplit(":", 1)[0])
@@ -172,9 +173,13 @@ class K8sPod(Node):
                 "kind": "Pod",
             }]
         if self.k8s_sysctls:
+            if isinstance(self.k8s_sysctls, dict):
+                self.k8s_sysctls = [
+                    {"name": k, "value": v} for k, v in self.k8s_sysctls.items()
+                ]
             pod_manifest["spec"]["containers"][0]["securityContext"][
                 "sysctls"
-            ] = [{"name": k, "value": v} for k, v in self.k8s_sysctls.items()]
+            ] = self.k8s_sysctls
         pod_manifest_str = json.dumps(pod_manifest)
         out, err, exitcode = errRun(
             f"echo '{pod_manifest_str}' | {KUBECTL} create -f -", shell=True
