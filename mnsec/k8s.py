@@ -63,7 +63,7 @@ class K8sPod(Node):
         publish=[],
         waitRunning=False,
         isolateControlNet=True,
-        syscalls={},
+        sysctls={},
         **params,
     ):
         """Instantiate the Pod
@@ -83,8 +83,8 @@ class K8sPod(Node):
             [bind_addr]:local_port:remote_prot[/protocol]. Multiple ports can
             be published/exposed. This option requires waitRunning. Example:
             publish=['8080:80', '127.0.0.1:5353:53/udp', ...]
-        syscalls: dict of name/value attributes that allow to configure kernel
-            parameters within a Kubernetes Pod using syscalls attribute.
+        sysctls: dict of name/value attributes that allow to configure kernel
+            parameters within a Kubernetes Pod using sysctls attribute.
 
         """
         if not self.initialized:
@@ -103,7 +103,7 @@ class K8sPod(Node):
         self.port_forward = []
         self.waitRunning = waitRunning
         self.isolateControlNet = isolateControlNet
-        self.k8s_syscalls = syscalls if isinstance(syscalls, dict) else {}
+        self.k8s_sysctls = sysctls if isinstance(sysctls, dict) else {}
         if self.k8s_publish and not self.waitRunning:
             self.waitRunning = True
         img = DISPLAY_IMG.get(image.rsplit(":", 1)[0])
@@ -173,8 +173,8 @@ class K8sPod(Node):
             }]
         if self.k8s_syscalls:
             pod_manifest["spec"]["containers"][0]["securityContext"][
-                "syscalls"
-            ] = [{"name": k, "value": v} for k, v in self.k8s_syscalls.items()]
+                "sysctls"
+            ] = [{"name": k, "value": v} for k, v in self.k8s_sysctls.items()]
         pod_manifest_str = json.dumps(pod_manifest)
         out, err, exitcode = errRun(
             f"echo '{pod_manifest_str}' | {KUBECTL} create -f -", shell=True
