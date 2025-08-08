@@ -104,6 +104,68 @@ function mnsecAddGroup() {
           selectedNodes.move({parent: groupName});
       });
 }
+function mnsecStartCapture(link) {
+  console.log('Start capture on Edge:', link.id(), link.data());
+  if (!link) {
+    return false;
+  }
+  const requestOptions = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(link.data())
+  };
+  fetch('/start_capture', requestOptions)
+      .then(response => {
+          if (!response.ok) {
+              response.text().then(text => {
+                  alert(`Error while starting capture: ${text}`);
+              });
+              return false;
+          }
+          return response.json();
+      })
+      .then(result => {
+          if (!result) {
+            return false;
+          }
+	  link.data("capture", result["capture"]);
+      });
+}
+function mnsecStopCapture(link) {
+  console.log('Stop capture on link:', link.id(), link.data());
+  if (!link) {
+    return false;
+  }
+  const requestOptions = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(link.data())
+  };
+  fetch('/stop_capture', requestOptions)
+      .then(response => {
+          if (!response.ok) {
+              response.text().then(text => {
+                  alert(`Error while starting capture: ${text}`);
+              });
+              return false;
+          }
+          return response.json();
+      })
+      .then(result => {
+          if (!result) {
+            return false;
+          }
+	  link.removeData("capture");
+      });
+}
+function mnsecViewCapture(link) {
+  const captureFile = link.data("capture");
+  if (!captureFile) {
+    console.log('Cannot view capture on link - not running:', link.id(), link.data());
+    alert(`Cannot view capture on link - not running`);
+  }
+  window.open(`/webshark/#${captureFile}`, "_blank");
+}
 window.dashCytoscapeFunctions = Object.assign(
     {},
     window.dashCytoscapeFunctions,
@@ -170,6 +232,15 @@ window.dashCytoscapeFunctions = Object.assign(
         },
         mnsec_add_group: function (event) {
             mnsecAddGroup();
+        },
+        mnsec_start_capture: function (event) {
+            mnsecStartCapture(event.target);
+        },
+        mnsec_stop_capture: function (event) {
+            mnsecStopCapture(event.target);
+        },
+        mnsec_view_capture: function (event) {
+            mnsecViewCapture(event.target);
         },
     }
 );

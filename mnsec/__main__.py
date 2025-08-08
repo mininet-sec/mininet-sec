@@ -282,6 +282,10 @@ class MininetRunner( object ):
                          help=('Comma-separated list of nodes where pods should be created (K8s nodeAffinity)') )
         opts.add_option( '--topofile', type='string', default='',
                          help='Topology file location (yaml)' )
+        opts.add_option( '--capture_dir', type='string', default='',
+                         help='Directory to save capture files' )
+        opts.add_option( '--capture_file_size', type='string', default='10',
+                         help='Maximum size for capture files (only one file is saved)' )
 
         self.options, self.args = opts.parse_args()
 
@@ -388,6 +392,7 @@ class MininetRunner( object ):
                   workDir=opts.workdir, apps=opts.apps, enable_api=opts.disable_api,
                   enable_sflow=opts.enable_sflow, sflow_collector=opts.sflow_collector,
                   sflow_sampling=opts.sflow_sampling, sflow_polling=opts.sflow_polling,
+                  captureDir=opts.capture_dir, captureFileSize=opts.capture_file_size,
                   listenPort=opts.listenport )
 
         if opts.ensure_value( 'nat', False ):

@@ -80,7 +80,7 @@ def main():
     "Test Firewall scenario"
     info( 'Starting Mininet-Sec\n' )
     topo = NetworkTopo()
-    net = Mininet_sec( topo=topo, controller=NullController )
+    net = Mininet_sec( topo=topo, controller=NullController, captureDir="/var/tmp" )
     net.start()
     AppManager(net, [net.get("srv1")], "http")
     AppManager(net, [net.get("srv1")], "https")

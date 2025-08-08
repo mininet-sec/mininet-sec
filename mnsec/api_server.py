@@ -410,6 +410,8 @@ class APIServer:
         self.server.add_url_rule("/add_link", None, self.add_link, methods=["POST"])
         self.server.add_url_rule("/add_group", None, self.add_group, methods=["POST"])
         self.server.add_url_rule("/xterm/<host>", None, self.xterm, methods=["GET"])
+        self.server.add_url_rule("/start_capture", None, self.start_capture, methods=["POST"])
+        self.server.add_url_rule("/stop_capture", None, self.stop_capture, methods=["POST"])
 
 
     def setup(self):
@@ -514,6 +516,27 @@ class APIServer:
                 "tooltipText": "Remove node from canvas",
                 "availableOn": ["node"],
                 "onClick": "remove",
+            },
+            {
+                "id": "start-link-capture",
+                "label": "Start capture",
+                "tooltipText": "Start Packet Capture",
+                "availableOn": ["edge"],
+                "onClickCustom": "mnsec_start_capture",
+            },
+            {
+                "id": "view-link-capture",
+                "label": "View capture",
+                "tooltipText": "View Packet Capture",
+                "availableOn": ["edge"],
+                "onClickCustom": "mnsec_view_capture",
+            },
+            {
+                "id": "stop-link-capture",
+                "label": "Stop capture",
+                "tooltipText": "Stop Packet Capture",
+                "availableOn": ["edge"],
+                "onClickCustom": "mnsec_stop_capture",
             },
         ]
         styles = {
@@ -970,6 +993,28 @@ class APIServer:
         if not host or host not in self.mnsec:
             return flask.render_template("xterm_error.html", error=f"Invalid host={host}")
         return flask.render_template("xterm.html", host=host, gtag=self.gtag)
+
+    def start_capture(self):
+        data = flask.request.get_json(force=True)
+        status, msg = self.mnsec.startPacketCapture(
+            nodeName1 = data.get("source"),
+            nodeName2 = data.get("target"),
+            intfName1 = data.get("source_interface"),
+            intfName2 = data.get("target_interface"),
+        )
+        if not status:
+            return f"Failed to start packet capture: {msg}", 400
+        return {"capture": msg}, 200
+
+    def stop_capture(self):
+        data = flask.request.get_json(force=True)
+        status, msg = self.mnsec.stopPacketCapture(
+            intfName1 = data.get("source_interface"),
+            intfName2 = data.get("target_interface"),
+        )
+        if not status:
+            return f"Failed to stop packet capture: {msg}", 400
+        return {"result": msg}, 200
 
     def run_server(self):
         info(f"APIServer listening on port {self.listen}:{self.port}\n")
