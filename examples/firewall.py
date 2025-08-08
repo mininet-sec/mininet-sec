@@ -11,6 +11,7 @@ outside Firewall zone. Legacy switches (LinuxBridge) is used to connect the
 hosts and the Firewall.
 """
 
+import os
 from mnsec.topo import Topo
 from mnsec.net import Mininet_sec
 from mnsec.cli import CLI
@@ -80,7 +81,7 @@ def main():
     "Test Firewall scenario"
     info( 'Starting Mininet-Sec\n' )
     topo = NetworkTopo()
-    net = Mininet_sec( topo=topo, controller=NullController, captureDir="/var/tmp" )
+    net = Mininet_sec( topo=topo, controller=NullController, captureDir=os.environ.get("CAPTURE_DIR", "/var/tmp"), captureWebSharkUrl=os.environ.get("CAPTURE_WEBSHARK_URL", "http://127.0.0.1:8085/webshark/") )
     net.start()
     AppManager(net, [net.get("srv1")], "http")
     AppManager(net, [net.get("srv1")], "https")

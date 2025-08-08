@@ -137,7 +137,7 @@ class Mininet_sec(Mininet):
     def __init__(
         self, topoFile="", workDir="/tmp/mnsec", apps="", enable_api=True,
         enable_sflow=False, sflow_collector="127.0.0.1:6343", sflow_sampling=64, sflow_polling=10,
-        captureDir="", captureFileSize="10",
+        captureDir="", captureFileSize="10", captureWebSharkUrl="", secretsFile="",
         **kwargs,
     ):
         """Create Mininet object.
@@ -151,6 +151,8 @@ class Mininet_sec(Mininet):
            captureDir: directory to store tcpdump packet capture (empty disables packet capture)
            captureFileSize: max size for packet capture file (only one file is saved). Default to
                10M. The unit can be a suffix of k/K, m/M or g/G (default to M)
+           captureWebSharkUrl: URL to webshark used to visualize packet capture pcap
+           secretsFile: filename which contains parameters to configure mnsec (post startup)
         """
         self.apps = apps
         self.workDir = workDir
@@ -161,6 +163,8 @@ class Mininet_sec(Mininet):
         self.run_api_server = enable_api
         self.captureDir = captureDir
         self.captureFileSize = captureFileSize
+        self.captureWebSharkUrl = captureWebSharkUrl
+        self.secretsFile = secretsFile
 
         self.cleanups = []
         self.topo_dict = {}
@@ -299,11 +303,24 @@ class Mininet_sec(Mininet):
 
         Mininet.start(self)
 
+        self.readSecrets()
+
         if self.sflow_enabled:
             self.enable_sflow()
 
         if self.run_api_server:
             self.api_server.setup()
+
+    def readSecrets(self):
+        if not self.secretsFile:
+            return
+        try:
+            self.secrets = yaml.load(open(self.secretsFile), Loader=yaml.Loader)
+        except Exception as exc:
+            error(f"Error reading secrets file: {exc}")
+            return
+        for k, v in self.secrets.items():
+            setattr(self, k, v)
 
     def setupHostHomeDir(self, host):
         """Setup host home dir."""

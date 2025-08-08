@@ -105,7 +105,6 @@ function mnsecAddGroup() {
       });
 }
 function mnsecStartCapture(link) {
-  console.log('Start capture on Edge:', link.id(), link.data());
   if (!link) {
     return false;
   }
@@ -129,10 +128,10 @@ function mnsecStartCapture(link) {
             return false;
           }
 	  link.data("capture", result["capture"]);
+          alert("Packet capture started successfully!");
       });
 }
 function mnsecStopCapture(link) {
-  console.log('Stop capture on link:', link.id(), link.data());
   if (!link) {
     return false;
   }
@@ -156,15 +155,22 @@ function mnsecStopCapture(link) {
             return false;
           }
 	  link.removeData("capture");
+          alert("Packet capture stopped!");
       });
 }
 function mnsecViewCapture(link) {
   const captureFile = link.data("capture");
+  const mnsecData = JSON.parse(localStorage.getItem("mnsec_data"));
   if (!captureFile) {
     console.log('Cannot view capture on link - not running:', link.id(), link.data());
     alert(`Cannot view capture on link - not running`);
+    return false;
   }
-  window.open(`/webshark/#${captureFile}`, "_blank");
+  if (!mnsecData.webSharkUrl) {
+    alert(`Cannot view packet capture: webSharkUrl not defined (see --capture_webshark_url)`);
+    return false;
+  }
+  window.open(`${mnsecData.webSharkUrl}#${captureFile}`, "_blank");
 }
 window.dashCytoscapeFunctions = Object.assign(
     {},

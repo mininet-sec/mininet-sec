@@ -404,6 +404,17 @@ class APIServer:
             prevent_initial_call=True,
         )
 
+        clientside_callback(
+            """
+            function(data) {
+              localStorage.setItem("mnsec_data", JSON.stringify(data));
+              return dash_clientside.no_update;
+            }
+            """,
+            Output('store-mnsec-data', 'id'),
+            Input("store-mnsec-data", "data"),
+        )
+
         self.server.add_url_rule("/topology", None, self.get_topology, methods=["GET"])
         self.server.add_url_rule("/ifindexes", None, self.get_ifindexes, methods=["GET"])
         self.server.add_url_rule("/add_node", None, self.add_node, methods=["POST"])
@@ -629,6 +640,7 @@ class APIServer:
         ]
 
         return_layout = html.Div([
+            dcc.Store(id='store-mnsec-data', data={"webSharkUrl": self.mnsec.captureWebSharkUrl}),
             dcc.Location(id='url'),
             dcc.Interval(id='interval-loading', interval=2000, disabled=True),
             html.Div(
