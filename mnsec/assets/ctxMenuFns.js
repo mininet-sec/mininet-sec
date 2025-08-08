@@ -104,6 +104,74 @@ function mnsecAddGroup() {
           selectedNodes.move({parent: groupName});
       });
 }
+function mnsecStartCapture(link) {
+  if (!link) {
+    return false;
+  }
+  const requestOptions = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(link.data())
+  };
+  fetch('/start_capture', requestOptions)
+      .then(response => {
+          if (!response.ok) {
+              response.text().then(text => {
+                  alert(`Error while starting capture: ${text}`);
+              });
+              return false;
+          }
+          return response.json();
+      })
+      .then(result => {
+          if (!result) {
+            return false;
+          }
+	  link.data("capture", result["capture"]);
+          alert("Packet capture started successfully!");
+      });
+}
+function mnsecStopCapture(link) {
+  if (!link) {
+    return false;
+  }
+  const requestOptions = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(link.data())
+  };
+  fetch('/stop_capture', requestOptions)
+      .then(response => {
+          if (!response.ok) {
+              response.text().then(text => {
+                  alert(`Error while starting capture: ${text}`);
+              });
+              return false;
+          }
+          return response.json();
+      })
+      .then(result => {
+          if (!result) {
+            return false;
+          }
+	  link.removeData("capture");
+          alert("Packet capture stopped!");
+      });
+}
+function mnsecViewCapture(link) {
+  const captureFile = link.data("capture");
+  const mnsecData = JSON.parse(localStorage.getItem("mnsec_data"));
+  if (!captureFile) {
+    console.log('Cannot view capture on link - not running:', link.id(), link.data());
+    alert(`Cannot view capture on link - not running`);
+    return false;
+  }
+  if (!mnsecData.webSharkUrl) {
+    alert(`Cannot view packet capture: webSharkUrl not defined (see --capture_webshark_url)`);
+    return false;
+  }
+  window.open(`${mnsecData.webSharkUrl}#${captureFile}`, "_blank");
+}
 window.dashCytoscapeFunctions = Object.assign(
     {},
     window.dashCytoscapeFunctions,
@@ -170,6 +238,15 @@ window.dashCytoscapeFunctions = Object.assign(
         },
         mnsec_add_group: function (event) {
             mnsecAddGroup();
+        },
+        mnsec_start_capture: function (event) {
+            mnsecStartCapture(event.target);
+        },
+        mnsec_stop_capture: function (event) {
+            mnsecStopCapture(event.target);
+        },
+        mnsec_view_capture: function (event) {
+            mnsecViewCapture(event.target);
         },
     }
 );

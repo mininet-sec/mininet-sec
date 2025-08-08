@@ -137,6 +137,7 @@ class Mininet_sec(Mininet):
     def __init__(
         self, topoFile="", workDir="/tmp/mnsec", apps="", enable_api=True,
         enable_sflow=False, sflow_collector="127.0.0.1:6343", sflow_sampling=64, sflow_polling=10,
+        captureDir="", captureFileSize="10", captureWebSharkUrl="", secretsFile="",
         **kwargs,
     ):
         """Create Mininet object.
@@ -147,6 +148,11 @@ class Mininet_sec(Mininet):
            sflow_collector: IP address and port of the sFlow collector
            sflow_sampling: sFlow sampling rate (collects 1 every N packets)
            sflow_polling: polling interval (send collected flows every N seconds)
+           captureDir: directory to store tcpdump packet capture (empty disables packet capture)
+           captureFileSize: max size for packet capture file (only one file is saved). Default to
+               10M. The unit can be a suffix of k/K, m/M or g/G (default to M)
+           captureWebSharkUrl: URL to webshark used to visualize packet capture pcap
+           secretsFile: filename which contains parameters to configure mnsec (post startup)
         """
         self.apps = apps
         self.workDir = workDir
@@ -155,10 +161,15 @@ class Mininet_sec(Mininet):
         self.sflow_sampling = sflow_sampling
         self.sflow_polling = sflow_polling
         self.run_api_server = enable_api
+        self.captureDir = captureDir
+        self.captureFileSize = captureFileSize
+        self.captureWebSharkUrl = captureWebSharkUrl
+        self.secretsFile = secretsFile
 
         self.cleanups = []
         self.topo_dict = {}
         self.cli = None
+        self.linkNames = {}
 
         if topoFile:
             kwargs["topo"] = self.buildTopoFromFile(topoFile)
@@ -292,11 +303,24 @@ class Mininet_sec(Mininet):
 
         Mininet.start(self)
 
+        self.readSecrets()
+
         if self.sflow_enabled:
             self.enable_sflow()
 
         if self.run_api_server:
             self.api_server.setup()
+
+    def readSecrets(self):
+        if not self.secretsFile:
+            return
+        try:
+            self.secrets = yaml.load(open(self.secretsFile), Loader=yaml.Loader)
+        except Exception as exc:
+            error(f"Error reading secrets file: {exc}")
+            return
+        for k, v in self.secrets.items():
+            setattr(self, k, v)
 
     def setupHostHomeDir(self, host):
         """Setup host home dir."""
@@ -432,6 +456,8 @@ class Mininet_sec(Mininet):
 
         link = Mininet.addLink(self, node1, node2, **params)
 
+        self.saveLinkName(link)
+
         if ipv4_node1:
             link.intf1.setIP(ipv4_node1)
         if ipv4_node2:
@@ -442,6 +468,13 @@ class Mininet_sec(Mininet):
             link.intf2.setIP(ipv6_node2)
 
         return link
+
+    def saveLinkName(self, link):
+        n1 = link.intf1.node.name
+        n2 = link.intf2.node.name
+        i1 = link.intf1.name.split("-")[-1]
+        i2 = link.intf2.name.split("-")[-1]
+        self.linkNames[f"{n1}-{i1}<->{n2}-{i2}"] = link
 
     def routingHelper(self):
         networks = {}
@@ -542,6 +575,46 @@ class Mininet_sec(Mininet):
             return CONTROLLERS_REV[name]
         return None
 
+    def isLocalNodeIntf(self, node1, intfName):
+        if isinstance(node1, K8sPod):
+            return False
+        cmdOut = quietRun(f"ip link show dev {intfName}").strip()
+        return f"{intfName}@" in cmdOut
+
+    def runTcpdump(self, intfName, captureFile):
+        cmdOut = quietRun(f"tcpdump_wrapper.sh start {intfName} {self.captureDir}/{captureFile} {self.captureFileSize}").strip()
+        if cmdOut:
+            return False, f"Error running tcpdump - {cmdOut}"
+        return True, captureFile
+
+    def startPacketCapture(self, nodeName1="", nodeName2="", intfName1="", intfName2="", **kwargs):
+        if not self.captureDir or not quietRun("which tcpdump").strip():
+            return False, "Packet capture disabled (see --captureDir option)"
+        if not (node1 := self.get(nodeName1)):
+            return False, f"Invalid or unknown node1 provided ({nodeName1})"
+        if not (node2 := self.get(nodeName2)):
+            return False, f"Invalid or unknown node2 provided ({nodeName2})"
+        if not (intf1 := node1.nameToIntf.get(intfName1)):
+            return False, f"Invalid or unknown intf1 provided ({intfName1})"
+        if not (intf2 := node2.nameToIntf.get(intfName2)):
+            return False, f"Invalid or unknown intf2 provided ({intfName2})"
+        captureFile = f"{intfName1}--{intfName2}.pcap"
+        if self.isLocalNodeIntf(node1, intfName1):
+            return self.runTcpdump(intfName1, captureFile)
+        elif self.isLocalNodeIntf(node2, intfName2):
+            return self.runTcpdump(intfName2, captureFile)
+        return False, "Cannot run packet capture on remote nodes"
+
+    def stopPacketCapture(self, intfName1="", intfName2="", **kwargs):
+        cmdOut = quietRun(f"tcpdump_wrapper.sh status {intfName1}").strip()
+        if cmdOut == "running":
+            quietRun(f"tcpdump_wrapper.sh stop {intfName1}")
+            return True, "stopped"
+        cmdOut = quietRun(f"tcpdump_wrapper.sh status {intfName2}").strip()
+        if cmdOut == "running":
+            quietRun(f"tcpdump_wrapper.sh stop {intfName2}")
+            return True, "stopped"
+        return False, "No capture running for any interface provided."
 
 class MininetSecWithControlNet(MininetWithControlNet):
     """Control network support."""
