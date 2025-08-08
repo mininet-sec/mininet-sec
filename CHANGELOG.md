@@ -13,6 +13,7 @@
 - Added option to run the Kubernetes Pods without isolating the control network (i.e., network provided by Kubernets, usually `eth0`) keeping the control net in the root netns (`isolateControlNet`)
 - Fixed issue with bind9 mnsec service for the regex to validade zone being added
 - Added support for sysctls definition on Kubernetes Pods
+- Added feature for allow packet capture and visualization (ingrated with webshark)
 
 ## [1.1.0] - 2025-01-10
 
