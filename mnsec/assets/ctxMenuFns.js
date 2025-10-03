@@ -162,11 +162,9 @@ window.dashCytoscapeFunctions = Object.assign(
 	    mnsecAddLink();
         },
         mnsec_open_xterm: function (event) {
-	    const selectedNodes = cy.nodes(":selected");
-            const selectedNodeIds = selectedNodes.map((node) =>
-                node.data("label")
-            );
-            selectedNodeIds.forEach((nodeid) => {window.open(`/xterm/${nodeid}`, "_blank");});
+            var node = event.target;
+            var nodeid = node.data("label");
+            window.open(`/xterm/${nodeid}`, "_blank");
         },
         mnsec_add_group: function (event) {
             mnsecAddGroup();
