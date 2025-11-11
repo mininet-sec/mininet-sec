@@ -294,7 +294,7 @@ class K8sPod(Node):
             output += part
         return output
 
-    def sidecar_cmd(self, cmd):
+    def sidecar_cmd(self, cmd, **kwargs):
         os.write(self.sidecar_fd, (cmd+"\n").encode())
         return self.read_shell_sidecar()
 
