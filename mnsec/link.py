@@ -59,8 +59,8 @@ class VxLanLink(Link):
                 shell=True,
             ).strip()
 
-        runCmd1 = node1.cmd if isinstance(node1, K8sPod) else quietRun
-        runCmd2 = node2.cmd if isinstance(node2, K8sPod) else quietRun
+        runCmd1 = node1.sidecar_cmd if isinstance(node1, K8sPod) else quietRun
+        runCmd2 = node2.sidecar_cmd if isinstance(node2, K8sPod) else quietRun
         netns1 = 1 if isinstance(node1, K8sPod) else node1.pid
         netns2 = 1 if isinstance(node2, K8sPod) else node2.pid
         cmd1Pfx = "ip netns exec mgmt" if getattr(node1, "isolateControlNet", False) else ""
@@ -146,8 +146,8 @@ class L2tpLink(Link):
                 shell=True,
             ).strip()
 
-        runCmd1 = node1.cmd if isinstance(node1, K8sPod) else quietRun
-        runCmd2 = node2.cmd if isinstance(node2, K8sPod) else quietRun
+        runCmd1 = node1.sidecar_cmd if isinstance(node1, K8sPod) else quietRun
+        runCmd2 = node2.sidecar_cmd if isinstance(node2, K8sPod) else quietRun
         netns1 = 1 if isinstance(node1, K8sPod) else node1.pid
         netns2 = 1 if isinstance(node2, K8sPod) else node2.pid
         cmd1Pfx = "ip netns exec mgmt" if getattr(node1, "isolateControlNet", False) else ""
@@ -216,8 +216,8 @@ class L2tpLink(Link):
         "Override to remove L2TP session and tunnel"
         node1 = self.intf1.node
         node2 = self.intf2.node
-        runCmd1 = node1.cmd if isinstance(node1, K8sPod) else quietRun
-        runCmd2 = node2.cmd if isinstance(node2, K8sPod) else quietRun
+        runCmd1 = node1.sidecar_cmd if isinstance(node1, K8sPod) else quietRun
+        runCmd2 = node2.sidecar_cmd if isinstance(node2, K8sPod) else quietRun
         cmd1Pfx = "ip netns exec mgmt" if getattr(node1, "isolateControlNet", False) else ""
         cmd2Pfx = "ip netns exec mgmt" if getattr(node2, "isolateControlNet", False) else ""
         if self.intf1.name in self.l2tp_intf_tun:
