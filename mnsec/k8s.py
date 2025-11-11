@@ -205,6 +205,8 @@ class K8sPod(Node):
         self.wait_running()
         # setup shell
         self.setup_shell()
+        # setup shell for sidecar container
+        self.setup_shell_sidecar()
         # pre start commands
         preStart = self.params.get("preStart") or []
         for cmd in preStart:
