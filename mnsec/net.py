@@ -250,9 +250,9 @@ class Mininet_sec(Mininet):
 
         info( '\n*** Running hosts post-startup:\n ')
         for host in self.hosts:
-            if hasattr( host, 'post_startup' ):
+            if hasattr( host, 'post_created' ):
                 info( host.name + ' ' )
-                host.post_startup()
+                host.post_created()
 
         info( '\n*** Adding switches:\n' )
         for switchName in topo.switches():
@@ -387,8 +387,8 @@ class Mininet_sec(Mininet):
         cls = HOSTS.get(kind)
         if cls:
             host = self.addHost(name, cls=cls, **params)
-            if hasattr( host, 'post_startup' ):
-                host.post_startup()
+            if hasattr( host, 'post_created' ):
+                host.post_created()
             self.startHost(host)
             return host
         cls = SWITCHES.get(kind)

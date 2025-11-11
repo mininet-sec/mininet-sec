@@ -56,7 +56,7 @@ class Host( Node ):
     """Mininet-Sec host."""
     display_image = "computer.png"
 
-    def post_startup(self):
+    def post_created(self):
         """Run steps after host has been created"""
         self.setup_published_ports()
 

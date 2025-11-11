@@ -14,6 +14,9 @@
 - Fixed issue with bind9 mnsec service for the regex to validade zone being added
 - Added support for sysctls definition on Kubernetes Pods
 - Enhanced open terminal on right click to leverage event target instead of selected node (#60)
+- Added xterm dark/light theme (#62) -- Thanks @gildasio
+- Fixed ip route output containing color chars in old version
+- Added preStart commands to be used to prepare image before it is executed
 
 ## [1.1.0] - 2025-01-10
 

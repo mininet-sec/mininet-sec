@@ -188,12 +188,16 @@ class K8sPod(Node):
                 f"Failed to create Kubernetes Pod: exit={exitcode} out={out} err={err}"
             )
 
-    def post_startup(self):
+    def post_created(self):
         """Run steps after Kubernetes has created the Pod (and all other pods)"""
         # wait until make sure pod is Running
         self.wait_running()
         # setup shell
         self.setup_shell()
+        # pre start commands
+        preStart = self.params.get("preStart") or []
+        for cmd in preStart:
+            self.cmd(cmd)
         # change control network to mgmt namespace
         if self.isolateControlNet:
             self.setup_mgmt_namespace()
@@ -267,9 +271,9 @@ class K8sPod(Node):
 
     def setup_mgmt_namespace(self):
         """Change the default network to mgmt namespace."""
-        addr = self.cmd("ip -4 addr show dev eth0 | grep inet").split()[1]
-        routes_link = self.cmd("ip route show dev eth0 scope link").splitlines()
-        routes_global = self.cmd("ip route show dev eth0 scope global").splitlines()
+        addr = self.cmd("env LANG=C NO_COLOR=1 ip -4 addr show dev eth0 | grep inet").split()[1]
+        routes_link = self.cmd("env LANG=C NO_COLOR=1 ip route show dev eth0 scope link").splitlines()
+        routes_global = self.cmd("env LANG=C NO_COLOR=1 ip route show dev eth0 scope global").splitlines()
         self.cmd("ip netns add mgmt")
         self.cmd("ip link set netns mgmt eth0")
         self.cmd("ip netns exec mgmt ip link set up lo")
