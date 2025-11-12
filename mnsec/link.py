@@ -4,11 +4,18 @@ import re
 
 from mininet.log import info, error, debug
 from mininet.util import makeIntfPair
-from mininet.link import Link
+from mininet.link import Link, Intf
 from mininet.util import quietRun
 from mininet.clean import addCleanupCallback, sh
 from mnsec.k8s import K8sPod
 
+
+class K8sIntf( Intf ):
+    "Patch interface on an K8sPod"
+
+    def ifconfig( self, *args ):
+        cmd = ' '.join( args )
+        return self.sidecar_cmd(f"ifconfig {self.name} {cmd}")
 
 class VxLanLink(Link):
     """VXLan Link"""
@@ -18,8 +25,10 @@ class VxLanLink(Link):
     def __init__(self, node1, node2, **params):
         """Create VXLan Link on nodes."""
         if isinstance(node1, K8sPod):
+            params.update(cls1=K8sIntf)
             node1.wait_running(wait=60)
         if isinstance(node2, K8sPod):
+            params.update(cls2=K8sIntf)
             node2.wait_running(wait=60)
         Link.__init__(self, node1, node2, **params)
 
