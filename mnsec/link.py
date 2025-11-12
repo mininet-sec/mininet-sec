@@ -15,7 +15,7 @@ class K8sIntf( Intf ):
 
     def ifconfig( self, *args ):
         cmd = ' '.join( args )
-        return self.sidecar_cmd(f"ifconfig {self.name} {cmd}")
+        return self.node.sidecar_cmd(f"ifconfig {self.name} {cmd}")
 
 class VxLanLink(Link):
     """VXLan Link"""
