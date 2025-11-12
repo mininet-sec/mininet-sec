@@ -416,7 +416,7 @@ class K8sPod(Node):
 
     def popen(self, *args, **kwargs):
         """Return a Popen() object from kubectl exec."""
-        kwargs["mncmd"] = [KUBECTL, "exec", "-it", self.k8s_name, "--"]
+        kwargs["mncmd"] = [KUBECTL, "exec", "-it", self.k8s_name, "-c", self.k8s_name, "--"]
         kwargs["cwd"] = "/"
         # once we overwrite the HOME, we have to explicitly set KUBECONFIG
         if isinstance(kwargs.get("env"), dict):
