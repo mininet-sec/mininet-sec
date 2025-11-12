@@ -110,6 +110,12 @@ class L2tpLink(Link):
 
     def __init__(self, node1, node2, **params):
         """Create L2TP Link on nodes."""
+        if isinstance(node1, K8sPod):
+            params.update(cls1=K8sIntf)
+            node1.wait_running(wait=60)
+        if isinstance(node2, K8sPod):
+            params.update(cls2=K8sIntf)
+            node2.wait_running(wait=60)
         Link.__init__(self, node1, node2, **params)
 
     @classmethod
