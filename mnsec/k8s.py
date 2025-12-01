@@ -64,6 +64,7 @@ class K8sPod(Node):
         waitRunning=False,
         isolateControlNet=True,
         sysctls={},
+        imagePullSecrets=[],
         **params,
     ):
         """Instantiate the Pod
@@ -86,6 +87,9 @@ class K8sPod(Node):
         sysctls: dict of name/value attributes that allow to configure kernel
             parameters within a Kubernetes Pod using sysctls attribute. It can
             also be in the same forma as Kubernetes: list of dict (name/value)
+        imagePullSecrets: list of strings. Each item in the imagePullSecrets
+            list refers to a Kubernetes Secret object by its name to be used
+            for accessing a registry and pull the image.
 
         """
         if not self.initialized:
@@ -105,6 +109,7 @@ class K8sPod(Node):
         self.waitRunning = waitRunning
         self.isolateControlNet = isolateControlNet
         self.k8s_sysctls = sysctls
+        self.k8s_imagePullSecrets = imagePullSecrets
         if self.k8s_publish and not self.waitRunning:
             self.waitRunning = True
         img = DISPLAY_IMG.get(image.rsplit(":", 1)[0])
@@ -179,6 +184,12 @@ class K8sPod(Node):
                 ]
             pod_manifest["spec"].setdefault("securityContext", {})
             pod_manifest["spec"]["securityContext"]["sysctls"] = self.k8s_sysctls
+        if isinstance(self.k8s_imagePullSecrets, list) and self.k8s_imagePullSecrets:
+            if isinstance(self.k8s_imagePullSecrets[0], str):
+                self.k8s_imagePullSecrets = [
+                    {"name": secret for secret in self.k8s_imagePullSecrets}
+                ]
+            pod_manifest["spec"]["imagePullSecrets"] = self.k8s_imagePullSecrets
         pod_manifest_str = json.dumps(pod_manifest)
         out, err, exitcode = errRun(
             f"echo '{pod_manifest_str}' | {KUBECTL} create -f -", shell=True
