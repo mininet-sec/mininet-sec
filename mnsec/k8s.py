@@ -5,6 +5,7 @@ import os
 import sys
 import json
 import pty
+import re
 import select
 import signal
 from uuid import uuid4
@@ -35,6 +36,10 @@ DISPLAY_IMG = {
     "hackinsdn/zeek": "server_zeek.png",
 }
 
+RE_SECRET = re.compile(
+    r"^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$"
+)
+
 
 def parse_token(token):
     try:
@@ -43,6 +48,22 @@ def parse_token(token):
     except:
         return None, None
 
+
+def parse_imagePullSecrets(imagePullSecrets):
+    if not isinstance(imagePullSecrets, list):
+        raise ValueError("imagePullSecrets must be a list of strings")
+    secrets = []
+    for item in imagePullSecrets:
+        if not isinstance(item, str):
+            raise ValueError("imagePullSecrets must be a list of strings")
+        if not RE_SECRET.match(item):
+            raise ValueError(
+                "imagePullSecrets secret name must consist of lower case "
+                "alphanumeric characters, '-' or '.', and must start and end "
+                "with an alphanumeric character"
+            )
+        secrets.append({"name": item})
+    return secrets
 
 class K8sPod(Node):
     "A Node running on Kubernetes as a Pod."
@@ -109,7 +130,7 @@ class K8sPod(Node):
         self.waitRunning = waitRunning
         self.isolateControlNet = isolateControlNet
         self.k8s_sysctls = sysctls
-        self.k8s_imagePullSecrets = imagePullSecrets
+        self.k8s_imagePullSecrets = parse_imagePullSecrets(imagePullSecrets)
         if self.k8s_publish and not self.waitRunning:
             self.waitRunning = True
         img = DISPLAY_IMG.get(image.rsplit(":", 1)[0])
@@ -184,11 +205,7 @@ class K8sPod(Node):
                 ]
             pod_manifest["spec"].setdefault("securityContext", {})
             pod_manifest["spec"]["securityContext"]["sysctls"] = self.k8s_sysctls
-        if isinstance(self.k8s_imagePullSecrets, list) and self.k8s_imagePullSecrets:
-            if isinstance(self.k8s_imagePullSecrets[0], str):
-                self.k8s_imagePullSecrets = [
-                    {"name": secret for secret in self.k8s_imagePullSecrets}
-                ]
+        if self.k8s_imagePullSecrets:
             pod_manifest["spec"]["imagePullSecrets"] = self.k8s_imagePullSecrets
         pod_manifest_str = json.dumps(pod_manifest)
         out, err, exitcode = errRun(
