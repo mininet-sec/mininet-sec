@@ -254,7 +254,7 @@ class K8sPod(Node):
 
     def setup_shell(self):
         cmd = [
-            "mnexec", "-cd", KUBECTL, "exec", "-it", self.k8s_name, "--",
+            "mnexec", "-cd", KUBECTL, "exec", "-it", self.k8s_name, "-c", self.k8s_name, "--",
             "env", 'PS1=' + chr( 127 ), "bash", "--norc", "--noediting", "-is", "mininet:" + self.name
         ]
         self.master, self.slave = pty.openpty()
@@ -295,13 +295,23 @@ class K8sPod(Node):
         return output
 
     def sidecar_cmd(self, cmd, **kwargs):
+        if self.shell_sidecar.poll() is not None:
+            # restart shell: try to clean up first
+            for cleanUp_funcs in (
+                lambda: os.close(self.sidecar_fd),
+                lambda: self.shell_sidecar.kill(),
+            ):
+                try: cleanUp_funcs()
+                except: continue
+            self.setup_shell_sidecar()
+
         os.write(self.sidecar_fd, (cmd+"\n").encode())
         return self.read_shell_sidecar()
 
     def setup_shell_sidecar(self):
         cmd = [
-            KUBECTL, "exec", "-it", self.k8s_name, "-c", "mnsec-sidecar", "--",
-            "env", 'PS1=' + chr( 127 ), "bash", "--norc", "--noediting",
+            "mnexec", "-cd", KUBECTL, "exec", "-it", self.k8s_name, "-c", "mnsec-sidecar", "--",
+            "env", 'PS1=' + chr( 127 ), "bash", "--norc", "--noediting", "-is", f"mininet:{self.name}-mnsec-sidecar",
         ]
         self.sidecar_fd, slave = pty.openpty()
         self.shell_sidecar = Popen( cmd, stdin=slave, stdout=slave, stderr=slave, close_fds=False )
