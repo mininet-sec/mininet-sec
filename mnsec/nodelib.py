@@ -5,6 +5,8 @@ LinuxServer: provides minimal functionatility to work as a server
 """
 import os
 import re
+import socket
+import time
 import traceback
 
 from mininet.nodelib import LinuxBridge as MN_Lxbr
@@ -91,6 +93,20 @@ class LinuxBridge(MN_Lxbr):
     def attach( self, intf ):
         "Connect a data port"
         self.cmd( 'brctl addif', self, intf )
+
+
+class RemoteController(MN_RemoteController):
+    """Mininet-sec remote controller."""
+
+    def __init__( self, name, ip='127.0.0.1', **kwargs):
+        """Overides init to get IP for possible hostname."""
+        while True:
+            try:
+                ip = socket.gethostbyname(ip)
+                break
+            except:
+                time.sleep(2)
+        MN_RemoteController.__init__(self, name, ip=ip, **kwargs)
 
 
 class IPTablesFirewall( Node ):
