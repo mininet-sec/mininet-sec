@@ -12,6 +12,7 @@ import traceback
 from mininet.nodelib import LinuxBridge as MN_Lxbr
 from mininet.node import Node, CPULimitedHost
 from mininet.node import OVSSwitch as MN_OVS
+from mininet.node import RemoteController as MN_RemoteController
 from mininet.link import Intf
 from mininet.log import info, error, warn, debug
 from mininet.moduledeps import pathCheck
