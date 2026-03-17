@@ -485,4 +485,7 @@ class K8sPod(Node):
 
 KUBECTL = quietRun("which kubectl").strip()
 if KUBECTL:
-    K8sPod.initialize()
+    # quick fix in order to try easyly the
+    # --help command
+    print()
+    # K8sPod.initialize()

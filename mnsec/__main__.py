@@ -198,7 +198,7 @@ class MininetRunner( object ):
         usage = ( '%prog [options]\n'
                   '(type %prog -h for details)' )
 
-        opts = OptionParser( description=desc, usage=usage )
+        opts = OptionParser(prog='mnsec', description=desc, usage=usage )
         addDictOption( opts, SWITCHES, SWITCHDEF, 'switch' )
         addDictOption( opts, HOSTS, HOSTDEF, 'host' )
         addDictOption( opts, CONTROLLERS, [], 'controller', action='append' )
