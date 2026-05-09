@@ -33,7 +33,6 @@ import mnsec.cli
 from mnsec.net import ( Mininet_sec, MininetWithControlNet, VERSION,
                         TOPODEF, TOPOS, SWITCHDEF, SWITCHES, HOSTDEF, HOSTS,
                         CONTROLLERDEF, CONTROLLERS, LINKDEF, LINKS )
-from mnsec.k8s import K8sPod
 
 from mininet.clean import cleanup
 from mininet.log import lg, LEVELS, info, debug, warn, error, output
