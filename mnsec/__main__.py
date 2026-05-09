@@ -35,8 +35,6 @@ from mnsec.net import ( Mininet_sec, MininetWithControlNet, VERSION,
                         CONTROLLERDEF, CONTROLLERS, LINKDEF, LINKS )
 from mnsec.k8s import K8sPod
 
-CONTROLLERDEF, CONTROLLERS, LINKDEF, LINKS )
-
 from mininet.clean import cleanup
 from mininet.log import lg, LEVELS, info, debug, warn, error, output
 from mininet.net import Mininet, MininetWithControlNet, VERSION
