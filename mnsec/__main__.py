@@ -198,7 +198,7 @@ class MininetRunner( object ):
         usage = ( '%prog [options]\n'
                   '(type %prog -h for details)' )
 
-        opts = OptionParser( description=desc, usage=usage )
+        opts = OptionParser(prog='mnsec', description=desc, usage=usage )
         addDictOption( opts, SWITCHES, SWITCHDEF, 'switch' )
         addDictOption( opts, HOSTS, HOSTDEF, 'host' )
         addDictOption( opts, CONTROLLERS, [], 'controller', action='append' )
@@ -376,7 +376,7 @@ class MininetRunner( object ):
             opts.wait = True
 
         if opts.k8s_node_affinity:
-            K8sPod.setup_node_affinity(opts.k8s_node_affinity)
+            so.environ["K8S_NODE_AFFINITY"] = opts.k8s_node_affinity
 
         mn = Net( topo=topo,
                   topoFile=opts.topofile,
