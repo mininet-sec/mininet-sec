@@ -159,6 +159,7 @@ class Mininet_sec(Mininet):
         self.cleanups = []
         self.topo_dict = {}
         self.cli = None
+        self.nextHostID = 1
 
         if topoFile:
             kwargs["topo"] = self.buildTopoFromFile(topoFile)
@@ -250,9 +251,9 @@ class Mininet_sec(Mininet):
 
         info( '\n*** Running hosts post-startup:\n ')
         for host in self.hosts:
-            if hasattr( host, 'post_startup' ):
+            if hasattr( host, 'post_created' ):
                 info( host.name + ' ' )
-                host.post_startup()
+                host.post_created()
 
         info( '\n*** Adding switches:\n' )
         for switchName in topo.switches():
@@ -297,6 +298,19 @@ class Mininet_sec(Mininet):
 
         if self.run_api_server:
             self.api_server.setup()
+
+    def addHost( self, name, cls=None, **params ):
+        """
+        Wrapper for adding host. Generate a increasing host ID for the host.
+        Parameters:
+           name: name of host to add
+           cls: custom host class/constructor (optional)
+           params: parameters for host
+        returns: added host
+        """
+        params.update({"hostID": self.nextHostID})
+        self.nextHostID += 1
+        return super().addHost(name, cls=cls, **params)
 
     def setupHostHomeDir(self, host):
         """Setup host home dir."""
@@ -387,8 +401,8 @@ class Mininet_sec(Mininet):
         cls = HOSTS.get(kind)
         if cls:
             host = self.addHost(name, cls=cls, **params)
-            if hasattr( host, 'post_startup' ):
-                host.post_startup()
+            if hasattr( host, 'post_created' ):
+                host.post_created()
             self.startHost(host)
             return host
         cls = SWITCHES.get(kind)

@@ -125,6 +125,7 @@ class K8sPod(Node):
                     "annotations": {
                         "container.apparmor.security.beta.kubernetes.io/"
                         + self.k8s_name: "unconfined",
+                        "container.apparmor.security.beta.kubernetes.io/mnsec-sidecar": "unconfined",
                     },
                 },
                 "spec": {
@@ -139,7 +140,17 @@ class K8sPod(Node):
                                     "add": ["NET_ADMIN", "SYS_ADMIN"],
                                 },
                             },
-                        }
+                        },
+                        {
+                            "image": "hackinsdn/debian:latest",
+                            "imagePullPolicy": "Always",
+                            "name": "mnsec-sidecar",
+                            "securityContext": {
+                                "capabilities": {
+                                    "add": ["NET_ADMIN", "SYS_ADMIN"],
+                                },
+                            },
+                        },
                     ],
                 },
         }
@@ -188,12 +199,18 @@ class K8sPod(Node):
                 f"Failed to create Kubernetes Pod: exit={exitcode} out={out} err={err}"
             )
 
-    def post_startup(self):
+    def post_created(self):
         """Run steps after Kubernetes has created the Pod (and all other pods)"""
         # wait until make sure pod is Running
         self.wait_running()
         # setup shell
         self.setup_shell()
+        # setup shell for sidecar container
+        self.setup_shell_sidecar()
+        # pre start commands
+        preStart = self.params.get("preStart") or []
+        for cmd in preStart:
+            self.cmd(cmd)
         # change control network to mgmt namespace
         if self.isolateControlNet:
             self.setup_mgmt_namespace()
@@ -237,7 +254,7 @@ class K8sPod(Node):
 
     def setup_shell(self):
         cmd = [
-            "mnexec", "-cd", KUBECTL, "exec", "-it", self.k8s_name, "--",
+            "mnexec", "-cd", KUBECTL, "exec", "-it", self.k8s_name, "-c", self.k8s_name, "--",
             "env", 'PS1=' + chr( 127 ), "bash", "--norc", "--noediting", "-is", "mininet:" + self.name
         ]
         self.master, self.slave = pty.openpty()
@@ -265,23 +282,62 @@ class K8sPod(Node):
         self.waiting = False
         self.cmd( 'unset HISTFILE; stty -echo; set +m' )
 
+    def read_shell_sidecar(self):
+        output = ''
+        while True:
+            part = os.read(self.sidecar_fd, 1024).decode()
+            if not part:
+                return ''
+            if part[-1] == chr(127):
+                output += part[:-1]
+                break
+            output += part
+        return output
+
+    def sidecar_cmd(self, cmd, **kwargs):
+        if self.shell_sidecar.poll() is not None:
+            # restart shell: try to clean up first
+            for cleanUp_funcs in (
+                lambda: os.close(self.sidecar_fd),
+                lambda: self.shell_sidecar.kill(),
+            ):
+                try: cleanUp_funcs()
+                except: continue
+            self.setup_shell_sidecar()
+
+        os.write(self.sidecar_fd, (cmd+"\n").encode())
+        return self.read_shell_sidecar()
+
+    def setup_shell_sidecar(self):
+        cmd = [
+            "mnexec", "-cd", KUBECTL, "exec", "-it", self.k8s_name, "-c", "mnsec-sidecar", "--",
+            "env", 'PS1=' + chr( 127 ), "bash", "--norc", "--noediting", "-is", f"mininet:{self.name}-mnsec-sidecar",
+        ]
+        self.sidecar_fd, slave = pty.openpty()
+        self.shell_sidecar = Popen( cmd, stdin=slave, stdout=slave, stderr=slave, close_fds=False )
+        os.close(slave)
+        # wait for shell to be connected
+        self.read_shell_sidecar()
+        self.sidecar_cmd("unset HISTFILE; stty -echo; set +m")
+
+
     def setup_mgmt_namespace(self):
         """Change the default network to mgmt namespace."""
-        addr = self.cmd("ip -4 addr show dev eth0 | grep inet").split()[1]
-        routes_link = self.cmd("ip route show dev eth0 scope link").splitlines()
-        routes_global = self.cmd("ip route show dev eth0 scope global").splitlines()
-        self.cmd("ip netns add mgmt")
-        self.cmd("ip link set netns mgmt eth0")
-        self.cmd("ip netns exec mgmt ip link set up lo")
-        self.cmd("ip netns exec mgmt ip link set up eth0")
-        self.cmd(f"ip netns exec mgmt ip addr add {addr} dev eth0")
+        addr = self.sidecar_cmd("ip -4 addr show dev eth0 | grep inet").split()[1]
+        routes_link = self.sidecar_cmd("ip route show dev eth0 scope link").splitlines()
+        routes_global = self.sidecar_cmd("ip route show dev eth0 scope global").splitlines()
+        self.sidecar_cmd("ip netns add mgmt")
+        self.sidecar_cmd("ip link set netns mgmt eth0")
+        self.sidecar_cmd("ip netns exec mgmt ip link set up lo")
+        self.sidecar_cmd("ip netns exec mgmt ip link set up eth0")
+        self.sidecar_cmd(f"ip netns exec mgmt ip addr add {addr} dev eth0")
         for route in routes_link:
-            self.cmd(f"ip netns exec mgmt ip route add {route.strip()} dev eth0 scope link")
+            self.sidecar_cmd(f"ip netns exec mgmt ip route add {route.strip()} dev eth0 scope link")
         for route in routes_global:
-            self.cmd(f"ip netns exec mgmt ip route add {route.strip()} dev eth0 scope global")
+            self.sidecar_cmd(f"ip netns exec mgmt ip route add {route.strip()} dev eth0 scope global")
         # setup DNS for the mgmt namespace according to original Kubernetes config
-        self.cmd(f"mkdir -p /etc/netns/mgmt")
-        self.cmd(f"cat /etc/resolv.conf > /etc/netns/mgmt/resolv.conf")
+        self.sidecar_cmd(f"mkdir -p /etc/netns/mgmt")
+        self.sidecar_cmd(f"cat /etc/resolv.conf > /etc/netns/mgmt/resolv.conf")
 
     def setup_port_forward(self):
         """Create port forward for the pod."""
@@ -303,8 +359,8 @@ class K8sPod(Node):
             if not port2:
                 continue
             filename = f"{homeDir}/local-{port2}-{proto}"
-            self.cmd(f"socat -s -lpmnsec-socat-unix-local-{port2}-{proto} unix-listen:{filename}.sock,fork {proto}:127.0.0.1:{port2} >{filename}.log 2>&1 &", shell=True)
-            self.cmd(f"ip netns exec mgmt socat -s -lpmnsec-socat-local-{port2}-{proto}-unix {proto}-listen:{port2},bind=0.0.0.0,reuseaddr,fork unix-connect:{filename}.sock >{filename}.log 2>&1 &", shell=True)
+            self.sidecar_cmd(f"socat -s -lpmnsec-socat-unix-local-{port2}-{proto} unix-listen:{filename}.sock,fork {proto}:127.0.0.1:{port2} >{filename}.log 2>&1 &", shell=True)
+            self.sidecar_cmd(f"ip netns exec mgmt socat -s -lpmnsec-socat-local-{port2}-{proto}-unix {proto}-listen:{port2},bind=0.0.0.0,reuseaddr,fork unix-connect:{filename}.sock >{filename}.log 2>&1 &", shell=True)
 
     def delete_port_forward(self):
         """Delete port forward."""
@@ -370,7 +426,7 @@ class K8sPod(Node):
 
     def popen(self, *args, **kwargs):
         """Return a Popen() object from kubectl exec."""
-        kwargs["mncmd"] = [KUBECTL, "exec", "-it", self.k8s_name, "--"]
+        kwargs["mncmd"] = [KUBECTL, "exec", "-it", self.k8s_name, "-c", self.k8s_name, "--"]
         kwargs["cwd"] = "/"
         # once we overwrite the HOME, we have to explicitly set KUBECONFIG
         if isinstance(kwargs.get("env"), dict):
@@ -380,7 +436,7 @@ class K8sPod(Node):
     def setRoutes(self, routes=[]):
         """Additional routes to be added."""
         for net, gw in routes:
-            self.cmd(f"ip route add {net} via {gw}")
+            self.sidecar_cmd(f"ip route add {net} via {gw}")
 
     def config( self, routes=[], **params ):
         """routes: list of tuples with addional routes to be added
@@ -388,6 +444,13 @@ class K8sPod(Node):
         r = Node.config( self, **params )
         self.setRoutes(routes)
         return r
+
+    def start(self):
+        """Run actions after links have been added."""
+        if "hostID" in self.params:
+            self.cmd(f"echo {self.params['hostID']} > /var/run/mnsec_hostID")
+        self.cmd(f"echo {' '.join(self.intfNames())} > /var/run/intfNames")
+        self.cmd("echo done > /var/run/mnsec_done")
 
     @classmethod
     def setup(cls):
