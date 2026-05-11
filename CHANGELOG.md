@@ -14,6 +14,7 @@
 - Fixed issue with bind9 mnsec service for the regex to validade zone being added
 - Added support for sysctls definition on Kubernetes Pods
 - Enhanced open terminal on right click to leverage event target instead of selected node (#60)
+- Added support for imagePullSecrets on Kubernetes Pods
 
 ## [1.1.0] - 2025-01-10
 
