@@ -445,6 +445,12 @@ class K8sPod(Node):
         self.setRoutes(routes)
         return r
 
+    def start(self):
+        """Run actions after links have been added."""
+        if "hostID" in self.params:
+            self.cmd(f"echo {self.params['hostID']} > /var/run/mnsec_hostID")
+        self.cmd("echo done > /var/run/mnsec_done")
+
     @classmethod
     def setup(cls):
         "Make sure kubectl is installed and working"

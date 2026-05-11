@@ -42,3 +42,5 @@ This is the first release of Mininet-Sec. The first release include a set of fea
 - Added support for Simulated Applications with more than 30 network services available (HTTP, HTTPS, LDAP, SSH, IMAP, SMTP, POP3, etc)
 - Added integration with traffic generators like Cisco Trex (see Secflood project at https://github.com/hackinsdn/secflood)
 - Added integration with Kubernetes and interconnection of hosts via VXLAN
+- Added information about hostID (unique integer for hosts on the topology) and saved into /var/run/mnsec\_hostID for K8s hosts
+- Added informaiton for startup done at /var/run/mnsec\_done to allow K8s hosts to identify when links were finished adding
