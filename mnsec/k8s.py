@@ -449,6 +449,7 @@ class K8sPod(Node):
         """Run actions after links have been added."""
         if "hostID" in self.params:
             self.cmd(f"echo {self.params['hostID']} > /var/run/mnsec_hostID")
+        self.cmd(f"echo {' '.join(self.intfNames())} > /var/run/intfNames")
         self.cmd("echo done > /var/run/mnsec_done")
 
     @classmethod
