@@ -33,7 +33,6 @@ import mnsec.cli
 from mnsec.net import ( Mininet_sec, MininetWithControlNet, VERSION,
                         TOPODEF, TOPOS, SWITCHDEF, SWITCHES, HOSTDEF, HOSTS,
                         CONTROLLERDEF, CONTROLLERS, LINKDEF, LINKS )
-from mnsec.k8s import K8sPod
 
 from mininet.clean import cleanup
 from mininet.log import lg, LEVELS, info, debug, warn, error, output
@@ -198,7 +197,7 @@ class MininetRunner( object ):
         usage = ( '%prog [options]\n'
                   '(type %prog -h for details)' )
 
-        opts = OptionParser( description=desc, usage=usage )
+        opts = OptionParser(prog='mnsec', description=desc, usage=usage )
         addDictOption( opts, SWITCHES, SWITCHDEF, 'switch' )
         addDictOption( opts, HOSTS, HOSTDEF, 'host' )
         addDictOption( opts, CONTROLLERS, [], 'controller', action='append' )
@@ -376,7 +375,7 @@ class MininetRunner( object ):
             opts.wait = True
 
         if opts.k8s_node_affinity:
-            K8sPod.setup_node_affinity(opts.k8s_node_affinity)
+            so.environ["K8S_NODE_AFFINITY"] = opts.k8s_node_affinity
 
         mn = Net( topo=topo,
                   topoFile=opts.topofile,

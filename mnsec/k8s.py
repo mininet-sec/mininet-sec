@@ -5,6 +5,7 @@ import os
 import sys
 import json
 import pty
+import re
 import select
 import signal
 from uuid import uuid4
@@ -35,6 +36,10 @@ DISPLAY_IMG = {
     "hackinsdn/zeek": "server_zeek.png",
 }
 
+RE_SECRET = re.compile(
+    r"^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$"
+)
+
 
 def parse_token(token):
     try:
@@ -43,6 +48,22 @@ def parse_token(token):
     except:
         return None, None
 
+
+def parse_imagePullSecrets(imagePullSecrets):
+    if not isinstance(imagePullSecrets, list):
+        raise ValueError("imagePullSecrets must be a list of strings")
+    secrets = []
+    for item in imagePullSecrets:
+        if not isinstance(item, str):
+            raise ValueError("imagePullSecrets must be a list of strings")
+        if not RE_SECRET.match(item):
+            raise ValueError(
+                "imagePullSecrets secret name must consist of lower case "
+                "alphanumeric characters, '-' or '.', and must start and end "
+                "with an alphanumeric character"
+            )
+        secrets.append({"name": item})
+    return secrets
 
 class K8sPod(Node):
     "A Node running on Kubernetes as a Pod."
@@ -64,6 +85,7 @@ class K8sPod(Node):
         waitRunning=False,
         isolateControlNet=True,
         sysctls={},
+        imagePullSecrets=[],
         **params,
     ):
         """Instantiate the Pod
@@ -86,6 +108,9 @@ class K8sPod(Node):
         sysctls: dict of name/value attributes that allow to configure kernel
             parameters within a Kubernetes Pod using sysctls attribute. It can
             also be in the same forma as Kubernetes: list of dict (name/value)
+        imagePullSecrets: list of strings. Each item in the imagePullSecrets
+            list refers to a Kubernetes Secret object by its name to be used
+            for accessing a registry and pull the image.
 
         """
         if not self.initialized:
@@ -105,6 +130,7 @@ class K8sPod(Node):
         self.waitRunning = waitRunning
         self.isolateControlNet = isolateControlNet
         self.k8s_sysctls = sysctls
+        self.k8s_imagePullSecrets = parse_imagePullSecrets(imagePullSecrets)
         if self.k8s_publish and not self.waitRunning:
             self.waitRunning = True
         img = DISPLAY_IMG.get(image.rsplit(":", 1)[0])
@@ -179,6 +205,8 @@ class K8sPod(Node):
                 ]
             pod_manifest["spec"].setdefault("securityContext", {})
             pod_manifest["spec"]["securityContext"]["sysctls"] = self.k8s_sysctls
+        if self.k8s_imagePullSecrets:
+            pod_manifest["spec"]["imagePullSecrets"] = self.k8s_imagePullSecrets
         pod_manifest_str = json.dumps(pod_manifest)
         out, err, exitcode = errRun(
             f"echo '{pod_manifest_str}' | {KUBECTL} create -f -", shell=True
