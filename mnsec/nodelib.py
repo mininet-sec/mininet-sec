@@ -101,12 +101,14 @@ class RemoteController(MN_RemoteController):
 
     def __init__( self, name, ip='127.0.0.1', **kwargs):
         """Overides init to get IP for possible hostname."""
-        while True:
+        for _ in range(150):
             try:
                 ip = socket.gethostbyname(ip)
                 break
             except:
                 time.sleep(2)
+        else:
+            raise TimeoutError(f"Timeout waiting for DNS resolution for {ip}")
         MN_RemoteController.__init__(self, name, ip=ip, **kwargs)
 
 
