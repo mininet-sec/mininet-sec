@@ -15,6 +15,7 @@
 - Added support for sysctls definition on Kubernetes Pods
 - Enhanced open terminal on right click to leverage event target instead of selected node (#60)
 - Added support for imagePullSecrets on Kubernetes Pods
+- Added support for RemoteController with DNS in addition to IP
 
 ## [1.1.0] - 2025-01-10
 
