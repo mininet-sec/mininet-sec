@@ -17,6 +17,8 @@
 - Added xterm dark/light theme (#62) -- Thanks @gildasio
 - Fixed ip route output containing color chars in old version
 - Added preStart commands to be used to prepare image before it is executed
+- Added support for imagePullSecrets on Kubernetes Pods
+- Added support for RemoteController with DNS in addition to IP
 
 ## [1.1.0] - 2025-01-10
 
