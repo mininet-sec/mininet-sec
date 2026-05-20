@@ -132,6 +132,9 @@ VERSION = "1.1.0"
 
 UUID_PATTERN = re.compile(r'^[\da-f]{8}-([\da-f]{4}-){3}[\da-f]{12}$')
 
+
+errorMsg = None
+
 class Mininet_sec(Mininet):
     """Emulation platform for cybersecurity tools in programmable networks"""
 
@@ -177,6 +180,12 @@ class Mininet_sec(Mininet):
         # changing ipBase to reduce chances of conflict
         kwargs.setdefault("ipBase", "10.255.0.0/16")
         Mininet.__init__(self, **kwargs)
+
+    @classmethod
+    def set_error(cls, msg):
+        global errorMsg
+        errorMsg = msg
+        APIServer.errorMsg = msg
 
     def buildTopoFromFile(self, topoFile):
         """Build topology from YAML file"""

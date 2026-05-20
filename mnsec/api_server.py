@@ -26,6 +26,8 @@ def set_winsize(fd, row, col, xpix=0, ypix=0):
 
 
 class APIServer:
+    errorMsg = None
+
     def __init__(self, mnsec, listen="0.0.0.0", port=8050):
         """Starts Flask/Dash API server. Requires Mininet-Sec object."""
         self.mnsec = mnsec
@@ -79,6 +81,16 @@ class APIServer:
         )
         def interval_update(n):
             if self.topology_loaded:
+                return "/", True
+            elif self.errorMsg is not None:
+                self.app.layout = html.Div([
+                    html.Img(src=get_asset_url('mininet-sec.png')),
+                    html.H3("Error while loading the topology... :-(", style={"margin": "1.3em 0 0.0 0", "padding": "9px", "background-color": "#11557C", "color": "white"}),
+                    html.Div(style={"text-wrap-mode": "wrap", "border": "1px solid #ddd", "margin": "0 0 1em 0", "padding": "10px"}, children=[
+                        html.Pre(self.errorMsg, style={"text-wrap-mode": "wrap"}),
+                        html.H4("Try restarting the Lab. If the error persists, contact the admins!"),
+                    ])
+                ])
                 return "/", True
             else:
                 return no_update

@@ -234,7 +234,7 @@ class K8sPod(Node):
     def post_created(self):
         """Run steps after Kubernetes has created the Pod (and all other pods)"""
         # wait until make sure pod is Running
-        self.wait_running()
+        self.wait_running(wait=300)
         # setup shell
         self.setup_shell()
         # setup shell for sidecar container
@@ -251,6 +251,7 @@ class K8sPod(Node):
 
     def wait_running(self, wait=float("inf"), step=2):
         """Wait for Pod to be Running and get its IP address."""
+        phase = None
         while wait > 0:
             try:
                 output = quietRun(
@@ -264,6 +265,8 @@ class K8sPod(Node):
                 pass
             time.sleep(step)
             wait -= step
+        else:
+            raise TimeoutError(f"Timeout waiting for {self.k8s_name}. Last status: {phase}")
 
     @classmethod
     def wait_deleted(cls):
@@ -284,10 +287,41 @@ class K8sPod(Node):
         else:
             info(f" Timeout waiting for pods to be deleted\n")
 
+    def read( self, size=1024, timeout=None ):
+        """Buffered read from node, potentially blocking.
+           size: maximum number of characters to return
+
+           This method was overwritten from original to allow timeout
+        """
+        count = len( self.readbuf )
+        if count < size:
+            if timeout is None:
+                data = os.read( self.stdout.fileno(), size - count )
+            else:
+                ready_to_read, _, _ = select.select(
+                    [self.stdout.fileno()], [], [], timeout
+                )
+                if ready_to_read:
+                    data = os.read( self.stdout.fileno(), size - count )
+                else:
+                    raise TimeoutError("Read operation timed out")
+            self.readbuf += self.decoder.decode( data )
+        if size >= len( self.readbuf ):
+            result = self.readbuf
+            self.readbuf = ''
+        else:
+            result = self.readbuf[ :size ]
+            self.readbuf = self.readbuf[ size: ]
+        return result
+
     def setup_shell(self):
+        start_script = "if [ -x /bin/bash ]; then"
+        start_script += f" exec /bin/bash --norc --noediting -is mininet:{self.name};"
+        start_script += f" else exec /bin/sh -is mininet:{self.name};"
+        start_script += "fi"
         cmd = [
             "mnexec", "-cd", KUBECTL, "exec", "-it", self.k8s_name, "-c", self.k8s_name, "--",
-            "env", 'PS1=' + chr( 127 ), "bash", "--norc", "--noediting", "-is", "mininet:" + self.name
+            "env", 'PS1=' + chr( 127 ), "sh", "-c", start_script
         ]
         self.master, self.slave = pty.openpty()
         self.shell = Popen( cmd, stdin=self.slave, stdout=self.slave, stderr=self.slave, close_fds=False )
@@ -306,11 +340,26 @@ class K8sPod(Node):
         self.lastPid = None
         self.readbuf = ''
         # Wait for prompt
-        while True:
-            data = self.read( 1024 )
+        other_data = ""
+        while self.shell.poll() is None:
+            try:
+                data = self.read( 1024, timeout=5 )
+            except TimeoutError:
+                continue
             if data[ -1 ] == chr( 127 ) or data[0] == chr(127):
                 break
             self.pollOut.poll()
+            other_data += data
+        if self.shell.poll() is not None:
+            status = quietRun(
+                f"{KUBECTL} get pod {self.k8s_name} --no-headers=true"
+            )
+            if "CrashLoopBackOff" in status:
+                status += " -- Perhaps you forgot to define the 'command' and 'args'? (e.g., docker images that dont define the entrypoint)"
+            raise ValueError(
+                f"K8sPod {self.name} failed retcode={self.shell.returncode} "
+                f"output={other_data.strip()}. Pod info: {status}"
+            )
         self.waiting = False
         self.cmd( 'unset HISTFILE; stty -echo; set +m' )
 
