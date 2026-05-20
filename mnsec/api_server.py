@@ -804,6 +804,7 @@ class APIServer:
                 # of this subprocess
                 host_pid = self.mnsec[host].pid
                 homeDir = self.mnsec.setupHostHomeDir(host)
+                myshell = self.mnsec[host].params.get("shell", "bash")
                 myenv = dict(os.environ)
                 myenv.update({"PS1": f"\\u@{host}:\\W\\$ ", "HOME": homeDir, "TERM": "xterm"})
                 # workaround to avoid bash overridding PS1
@@ -811,7 +812,7 @@ class APIServer:
                 myenv["SUDO_PS1"] = "# "
                 mncmd = ['mnexec', '-a', str(host_pid)]
                 with self.mnsec[host].popen(
-                    "bash", env=myenv, cwd=homeDir, mncmd=mncmd, stdout=None, stderr=None,
+                    myshell, env=myenv, cwd=homeDir, mncmd=mncmd, stdout=None, stderr=None,
                 ) as process:
                     try:
                         stdout, stderr = process.communicate()
