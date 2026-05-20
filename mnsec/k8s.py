@@ -308,7 +308,7 @@ class K8sPod(Node):
         # Wait for prompt
         while True:
             data = self.read( 1024 )
-            if data[ -1 ] == chr( 127 ):
+            if data[ -1 ] == chr( 127 ) or data[0] == chr(127):
                 break
             self.pollOut.poll()
         self.waiting = False
