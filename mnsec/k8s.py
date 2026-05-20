@@ -123,6 +123,10 @@ class K8sPod(Node):
         self.k8s_args = args
         self.k8s_pod_ip = None
         self.k8s_env = env
+        self.k8s_env.append({
+            "name": "MNSEC_HOMEDIR",
+            "value": params.get("homeDir", f"/tmp/mnsec/{name}")
+        })
         if os.getenv("GTAG"):
             self.k8s_env.append({"name": "GTAG", "value": os.getenv("GTAG")})
         self.k8s_publish = parse_publish(publish)
@@ -475,10 +479,13 @@ class K8sPod(Node):
 
     def start(self):
         """Run actions after links have been added."""
+        homeDir = self.params.get("homeDir", f"/tmp/mnsec/{self.name}")
+        self.cmd(f"mkdir -p {homeDir}")
         if "hostID" in self.params:
-            self.cmd(f"echo {self.params['hostID']} > /var/run/mnsec_hostID")
-        self.cmd(f"echo {' '.join(self.intfNames())} > /var/run/intfNames")
-        self.cmd("echo done > /var/run/mnsec_done")
+            self.cmd(f"echo {self.params['hostID']} > {homeDir}/hostID")
+        self.cmd(f"echo {self.name} > {homeDir}/hostname")
+        self.cmd(f"echo {' '.join(self.intfNames())} > {homeDir}/intfNames")
+        self.cmd("echo {time.time()} > {homeDir}/done")
 
     @classmethod
     def setup(cls):

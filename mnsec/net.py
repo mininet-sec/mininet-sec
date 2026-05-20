@@ -311,13 +311,13 @@ class Mininet_sec(Mininet):
         """
         params.update({"hostID": self.nextHostID})
         self.nextHostID += 1
+        params.update({"homeDir": f"{self.workDir}/{name}"})
         return super().addHost(name, cls=cls, **params)
 
     def setupHostHomeDir(self, host):
         """Setup host home dir."""
         host = host if not isinstance( host, str ) else self[ host ]
-        homeDir = f"{self.workDir}/{host.name}"
-        host.params["homeDir"] = homeDir
+        homeDir = host.params.get("homeDir", f"{self.workDir}/{host.name}")
         host.cmd(f"mkdir -p {homeDir}")
         return homeDir
 
