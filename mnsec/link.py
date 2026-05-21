@@ -4,11 +4,69 @@ import re
 
 from mininet.log import info, error, debug
 from mininet.util import makeIntfPair
-from mininet.link import Link, Intf
+from mininet.link import Intf
+from mininet.link import Link as MN_Link
 from mininet.util import quietRun
 from mininet.clean import addCleanupCallback, sh
 from mnsec.k8s import K8sPod
 
+
+def sanitize_intf_name(alias):
+    """
+    Sanitize interface name to allow it to be used as AltName by replacing any
+    non-permitted characters with '-'. Permitted characters include:
+     - Alphanumeric: a-z, A-Z, and 0-9
+     - Special Symbols: dots (.), underscores (_), and hyphens (-)
+        - even though Linux allows colon (:) we dont because it is used for
+          link name
+    """
+    ifname = re.sub(r"[^a-zA-Z0-9._-]", "-", alias)
+    # The maximum length is 15 characters. This is defined by the kernel
+    # constant IFNAMSIZ. To shorten we combine its prefix and suffix
+    if len(ifname) > 15:
+        prefix = ifname[:3]
+        suffix = ifname[-11:]
+        ifname = f"{prefix}_{suffix}"
+    return ifname
+
+
+class Link(MN_Link):
+    """Wrapper around Mininet Link to allow alias and altname."""
+
+    def __init__(self, node1, node2, **params):
+        """Create the link and change its alias/altname."""
+        super().__init__(node1, node2, **params)
+        if "alias1" in params:
+            self.config_alias(self.intf1, params["alias1"])
+        if "alias2" in params:
+            self.config_alias(self.intf2, params["alias2"])
+
+    def intfName(self, node, n):
+        """
+        Construct a canonical interface name node-ethN for interface n. This
+        method overwrite the standard Mininet version to validate the ifName
+        size.
+        """
+        ifname = super().intfName(node, n)
+        if len(ifname) <= 15:
+            return ifname
+        ifname = node.name[:3] + "-eth" + repr( n )
+        if len(ifname) <= 15:
+            return ifname
+        return node.name[:3] + "-e" + repr(n)[-10:]
+
+    def config_alias(self, intf, alias):
+        """Config alias in a node's interface."""
+        node = intf.node
+        runCmd = node.sidecar_cmd if isinstance(node, K8sPod) else node.cmd
+        output = runCmd(f"ip link set {intf.name} alias {alias}")
+        if output:
+            error(f"Failed to config {alias=} for {intf.name=} {node.name=}: {output}")
+            return
+        altname = sanitize_intf_name(alias)
+        output = runCmd(f"ip link property add dev {intf.name} altname {altname}")
+        if output:
+            error(f"Failed to config {altname=} for {intf.name=} {node.name=}: {output}")
 
 class K8sIntf( Intf ):
     "Patch interface on an K8sPod"
