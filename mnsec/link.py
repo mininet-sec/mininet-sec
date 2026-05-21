@@ -38,8 +38,10 @@ class Link(MN_Link):
         super().__init__(node1, node2, **params)
         if "alias1" in params:
             self.config_alias(self.intf1, params["alias1"])
+            self.intf1.params["alias"] = params["alias1"]
         if "alias2" in params:
             self.config_alias(self.intf2, params["alias2"])
+            self.intf2.params["alias"] = params["alias2"]
 
     def intfName(self, node, n):
         """
