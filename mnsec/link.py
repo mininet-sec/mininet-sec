@@ -66,9 +66,9 @@ class Link(MN_Link):
             error(f"Failed to config {alias=} for {intf.name=} {node.name=}: {output}")
             return
         altname = sanitize_intf_name(alias)
-        output = runCmd(f"ip link property add dev {intf.name} altname {altname}")
-        if output:
-            error(f"Failed to config {altname=} for {intf.name=} {node.name=}: {output}")
+        # some link types does not support altname property and will return
+        # Operation not supported, so we just dont check the return value
+        runCmd(f"ip link property add dev {intf.name} altname {altname}")
 
 class K8sIntf( Intf ):
     "Patch interface on an K8sPod"
