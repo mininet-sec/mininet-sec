@@ -483,8 +483,8 @@ class APIServer:
             elements.append({"data": {
                 "source": link.intf1.node.name,
                 "target": link.intf2.node.name,
-                "slabel": link.params.get("alias1", link.intf1.name.split("-")[-1]),
-                "tlabel": link.params.get("alias2", link.intf2.name.split("-")[-1]),
+                "slabel": link.intf1.params.get("alias", link.intf1.name.split("-")[-1]),
+                "tlabel": link.intf2.params.get("alias", link.intf2.name.split("-")[-1]),
                 "source_interface": link.intf1.name,
                 "target_interface": link.intf2.name
             }})
