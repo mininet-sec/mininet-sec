@@ -88,7 +88,7 @@ class VxLanLink(Link):
         if isinstance(node2, K8sPod):
             params.update(cls2=K8sIntf)
             node2.wait_running(wait=60)
-        Link.__init__(self, node1, node2, **params)
+        super().__init__(node1, node2, **params)
 
     @classmethod
     def makeIntfPair(
@@ -174,7 +174,7 @@ class L2tpLink(Link):
         if isinstance(node2, K8sPod):
             params.update(cls2=K8sIntf)
             node2.wait_running(wait=60)
-        Link.__init__(self, node1, node2, **params)
+        super().__init__(node1, node2, **params)
 
     @classmethod
     def cleanup(cls):
