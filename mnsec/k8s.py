@@ -222,6 +222,8 @@ class K8sPod(Node):
             pod_manifest["spec"]["securityContext"]["sysctls"] = self.k8s_sysctls
         if self.params.get("privileged"):
             pod_manifest["spec"]["containers"][0]["securityContext"]["privileged"] = True
+        if isinstance(self.params.get("capabilities"), list):
+            pod_manifest["spec"]["containers"][0]["securityContext"]["capabilities"]["add"] = self.params["capabilities"]
         if self.k8s_imagePullSecrets:
             pod_manifest["spec"]["imagePullSecrets"] = self.k8s_imagePullSecrets
         pod_manifest_str = json.dumps(pod_manifest)
