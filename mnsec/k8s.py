@@ -220,8 +220,6 @@ class K8sPod(Node):
                 ]
             pod_manifest["spec"].setdefault("securityContext", {})
             pod_manifest["spec"]["securityContext"]["sysctls"] = self.k8s_sysctls
-        if self.params.get("privileged"):
-            pod_manifest["spec"]["containers"][0]["securityContext"]["privileged"] = True
         if self.k8s_imagePullSecrets:
             pod_manifest["spec"]["imagePullSecrets"] = self.k8s_imagePullSecrets
         pod_manifest_str = json.dumps(pod_manifest)
