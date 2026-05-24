@@ -19,6 +19,8 @@
 - Added preStart commands to be used to prepare image before it is executed
 - Added support for imagePullSecrets on Kubernetes Pods
 - Added support for RemoteController with DNS in addition to IP
+- Added support for specifying a K8sPod with `privileged` mode
+- Added support for specifying a K8sPod with `capabilities` to be added
 
 ## [1.1.0] - 2025-01-10
 
