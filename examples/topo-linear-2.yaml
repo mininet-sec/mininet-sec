@@ -1,7 +1,8 @@
 name: lab-ospf-multiarea
 settings:
   env:
-    DEFENVVAR1: xpto
+    - name: DEFENVVAR1
+      value: xpto
   # hosts_kind: default
   # switches_kind: default
   # links_kind: default
