@@ -566,6 +566,19 @@ class Mininet_sec(Mininet):
             return CONTROLLERS_REV[name]
         return None
 
+    def getNodeKinds(self):
+        """Return the available node kinds grouped by category (host/switch).
+
+        Consumed by the API server to populate the "add node" options, so it
+        doesn't need to import HOSTS/SWITCHES directly (avoids a circular
+        import). The "default" aliases are omitted as they duplicate a concrete
+        kind.
+        """
+        return {
+            "host": [kind for kind in HOSTS if kind != "default"],
+            "switch": [kind for kind in SWITCHES if kind != "default"],
+        }
+
 
 class MininetSecWithControlNet(MininetWithControlNet):
     """Control network support."""

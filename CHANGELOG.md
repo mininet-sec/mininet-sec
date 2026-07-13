@@ -22,6 +22,7 @@
 - Added support for specifying a K8sPod with `privileged` mode
 - Added support for specifying a K8sPod with `capabilities` to be added
 - Added rsync into hackinsdn/krill and hackinsdn/routinator by default
+- Replaced the "+ Node" dropdown in the Web UI with a modal to add nodes, allowing the user to set the node name, pick the node type from any registered host/switch kind and provide arbitrary key/value attributes (kwargs). The modal supports closing via the × button, backdrop click or Esc, and submitting with Enter
 
 ## [1.1.0] - 2025-01-10
 

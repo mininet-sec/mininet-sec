@@ -17,6 +17,127 @@ function requestAddNode(nodeName, nodeType, params) {
     var resText = request();
     return resText;
 }
+function mnsecOpenNewNodeModal() {
+  const modal = document.querySelector('#new-node-modal');
+  if (!modal) {
+    return;
+  }
+  // attach dismiss handlers only once (nodes persist across opens)
+  if (!modal.dataset.mnsecBound) {
+    modal.dataset.mnsecBound = '1';
+    // clicking the backdrop (the overlay itself, not its content) closes
+    modal.addEventListener('click', function (evt) {
+      if (evt.target === modal) {
+        mnsecCloseNewNodeModal();
+      }
+    });
+    const closeBtn = document.querySelector('#new-node-close');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', mnsecCloseNewNodeModal);
+    }
+  }
+  // reset fields for a fresh entry
+  const nameInput = document.querySelector('#new-node-name');
+  if (nameInput) {
+    nameInput.value = '';
+  }
+  const attrs = document.querySelector('#new-node-attrs');
+  if (attrs) {
+    attrs.innerHTML = '';
+  }
+  modal.hidden = false;
+}
+function mnsecCloseNewNodeModal() {
+  const modal = document.querySelector('#new-node-modal');
+  if (modal) {
+    modal.hidden = true;
+  }
+}
+function mnsecAddAttrRow() {
+  const container = document.querySelector('#new-node-attrs');
+  if (!container) {
+    return;
+  }
+  const row = document.createElement('div');
+  row.className = 'new-node-attr-row';
+  const keyInput = document.createElement('input');
+  keyInput.type = 'text';
+  keyInput.placeholder = 'name';
+  keyInput.className = 'attr-key';
+  const valInput = document.createElement('input');
+  valInput.type = 'text';
+  valInput.placeholder = 'value';
+  valInput.className = 'attr-value';
+  const removeBtn = document.createElement('button');
+  removeBtn.type = 'button';
+  removeBtn.className = 'attr-remove';
+  removeBtn.textContent = '×';
+  removeBtn.addEventListener('click', function () {
+    row.remove();
+  });
+  row.appendChild(keyInput);
+  row.appendChild(valInput);
+  row.appendChild(removeBtn);
+  container.appendChild(row);
+}
+function mnsecSubmitNewNode(nodeTypeStr, nodeNameRaw) {
+  if (!nodeTypeStr) {
+    alert('Please select a node type');
+    return;
+  }
+  if (!nodeNameRaw) {
+    alert('Please enter a node name');
+    return;
+  }
+  const nodeName = nodeNameRaw.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+  if (!nodeName) {
+    alert('Invalid node name: use only letters and numbers');
+    return;
+  }
+  // value is "<visualType>/<kind>", e.g. "host/proc" or "switch/ovs"
+  const nodeType = nodeTypeStr.split('/');
+  const params = {};
+  document.querySelectorAll('#new-node-attrs .new-node-attr-row').forEach(function (row) {
+    const name = row.querySelector('.attr-key').value.trim();
+    const rawValue = row.querySelector('.attr-value').value.trim();
+    if (name && rawValue) {
+      let value;
+      try {
+        value = JSON.parse(rawValue);
+      } catch (error) {
+        value = rawValue;
+      }
+      params[name] = value;
+    }
+  });
+  const loadingAddNode = document.querySelector('#loading-add-node');
+  const result = requestAddNode(nodeName, nodeType[1], params);
+  if (!result) {
+    return;
+  }
+  if (loadingAddNode) {
+    loadingAddNode.style.display = 'flex';
+  }
+  result.then(function (displayImg) {
+    if (loadingAddNode) {
+      loadingAddNode.style.display = 'none';
+    }
+    if (!displayImg) {
+      // request failed (requestAddNode already alerted): keep modal open to retry
+      return;
+    }
+    cy.add({
+      data: {
+        id: nodeName,
+        label: nodeName,
+        type: nodeType[0],
+        url: `/assets/${displayImg}`,
+      },
+      classes: ['rectangle'],
+    });
+    mnsecCloseNewNodeModal();
+  });
+}
 function mnsecAddLink() {
   const selectedNodes = cy.nodes(":selected");
   const selectedNodeIds = selectedNodes.map((node) =>
@@ -104,6 +225,31 @@ function mnsecAddGroup() {
           selectedNodes.move({parent: groupName});
       });
 }
+// keyboard handling for the new-node modal: Esc closes, Enter submits
+// (Enter only from the text inputs, so it does not fire while picking a type)
+document.addEventListener('keydown', function (evt) {
+  const modal = document.querySelector('#new-node-modal');
+  if (!modal || modal.hidden) {
+    return;
+  }
+  if (evt.key === 'Escape') {
+    evt.preventDefault();
+    mnsecCloseNewNodeModal();
+  } else if (evt.key === 'Enter') {
+    const active = document.activeElement;
+    const fromTextInput = active
+      && active.tagName === 'INPUT'
+      && active.closest('#new-node-modal')
+      && !active.closest('#new-node-type');
+    if (fromTextInput) {
+      const submitBtn = document.querySelector('#new-node-submit');
+      if (submitBtn) {
+        evt.preventDefault();
+        submitBtn.click();
+      }
+    }
+  }
+});
 window.dashCytoscapeFunctions = Object.assign(
     {},
     window.dashCytoscapeFunctions,

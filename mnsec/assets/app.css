@@ -69,3 +69,94 @@
 #cytoscape {
     background-color: #eee;
 }
+
+.mnsec-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.mnsec-modal[hidden] {
+    display: none;
+}
+
+.mnsec-modal-content {
+    background-color: #fff;
+    border-radius: 6px;
+    padding: 1.5em;
+    width: 420px;
+    max-width: 90%;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.mnsec-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1em;
+}
+
+.mnsec-modal-header h4 {
+    margin: 0;
+    color: #11557C;
+}
+
+.mnsec-modal-close {
+    border: none;
+    background: transparent;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+    color: #888;
+    padding: 0 6px;
+}
+
+.mnsec-modal-close:hover {
+    color: #333;
+}
+
+.mnsec-modal-content label {
+    display: block;
+    margin: 0.8em 0 0.3em 0;
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.new-node-attr-row {
+    display: flex;
+    gap: .4em;
+    margin-bottom: .4em;
+    align-items: center;
+}
+
+.new-node-attr-row input {
+    flex: 1;
+    min-width: 0;
+}
+
+.new-node-attr-row .attr-remove {
+    flex: 0 0 auto;
+    padding: 0 10px;
+    line-height: 1.6;
+}
+
+.mnsec-modal-add-attr {
+    margin-top: .5em;
+    padding: 0 10px;
+}
+
+.mnsec-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: .5em;
+    margin-top: 1.5em;
+}

@@ -325,70 +325,59 @@ class APIServer:
 
         clientside_callback(
             """
-            function(typeStr) {
-              const inputEle = document.querySelector('#btn-add-node input');
-              inputEle.disabled = true;
-              const nodeType = typeStr.split("/");
-              var nodeId = cy.nodes().length + 1;
-              let nodeName = prompt("Node name (only letters and numbers)", `n${nodeId}`);
-              if (!nodeName) {
-                return "";
+            function(n_clicks) {
+              if (n_clicks) {
+                mnsecOpenNewNodeModal();
               }
-              nodeName = nodeName.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-              let nodeParams = prompt("Node parameters (comma-separated name=value pairs. Example: image='hackinsdn/debian:latest', group='group1'):");
-              const params = {};
-              if (nodeParams) {
-                nodeParams.split(',').forEach(function (pair) {
-                  const [name, value] = pair.split('=');
-                  if (name && value) {
-                    let newValue;
-                    try {
-                      newValue = JSON.parse(value.trim());
-                    } catch (error) {
-                      newValue = value.trim();
-                    }
-                    params[name.trim()] = newValue;
-                  }
-                });
-              }
-              var result = requestAddNode(nodeName, nodeType[1], params);
-              if (result) {
-                const loadingAddNode = document.querySelector('#loading-add-node');
-                loadingAddNode.style.display = "flex";
-                result.then(function(displayImg){
-                  inputEle.disabled = false;
-                  if (!displayImg) {
-                    return "";
-                  }
-                  cy.add({
-                    data: {
-                      id: nodeName,
-                      label: nodeName,
-                      type: nodeType[0],
-                      url: `/assets/${displayImg}`,
-                    },
-                    classes: ['rectangle'],
-                  });
-                  loadingAddNode.style.display = "none";
-                });
-                return "";
-              }
-              return "";
+              return dash_clientside.no_update;
             }
             """,
-            Output('btn-add-node', 'value'),
-            Input("btn-add-node", "value"),
+            Output('btn-new-node', 'id'),
+            Input("btn-new-node", "n_clicks"),
             prevent_initial_call=True,
         )
 
         clientside_callback(
             """
-            function(input1) {
-              return 'show';
+            function(n_clicks) {
+              if (n_clicks) {
+                mnsecAddAttrRow();
+              }
+              return dash_clientside.no_update;
             }
             """,
-            Output('loading-add-node', 'display'),
-            Input("btn-add-node", "value"),
+            Output('new-node-add-attr', 'id'),
+            Input("new-node-add-attr", "n_clicks"),
+            prevent_initial_call=True,
+        )
+
+        clientside_callback(
+            """
+            function(n_clicks) {
+              if (n_clicks) {
+                mnsecCloseNewNodeModal();
+              }
+              return dash_clientside.no_update;
+            }
+            """,
+            Output('new-node-cancel', 'id'),
+            Input("new-node-cancel", "n_clicks"),
+            prevent_initial_call=True,
+        )
+
+        clientside_callback(
+            """
+            function(n_clicks, nodeType, nodeName) {
+              if (n_clicks) {
+                mnsecSubmitNewNode(nodeType, nodeName);
+              }
+              return dash_clientside.no_update;
+            }
+            """,
+            Output('new-node-submit', 'id'),
+            Input("new-node-submit", "n_clicks"),
+            State("new-node-type", "value"),
+            State("new-node-name", "value"),
             prevent_initial_call=True,
         )
 
@@ -429,6 +418,15 @@ class APIServer:
         self.topology_loaded = True
 
     def serve_layout(self):
+        node_kinds = self.mnsec.getNodeKinds()
+        node_type_options = [
+            {"label": f"Host / {kind}", "value": f"host/{kind}"}
+            for kind in node_kinds["host"]
+        ] + [
+            {"label": f"Switch / {kind}", "value": f"switch/{kind}"}
+            for kind in node_kinds["switch"]
+        ]
+
         layout = "cose"
         elements = []
         groups = {}
@@ -645,18 +643,7 @@ class APIServer:
                                         html.Button("Term", id="btn-open-term"),
                                         href="#", target="_blank", id="link-open-term", style={"display": "none"},
                                     ),
-                                    dcc.Dropdown(
-                                        id="btn-add-node",
-                                        placeholder="+ Node",
-                                        className="menudropdown",
-                                        clearable=False,
-                                        options=[
-                                            {"label": "Host", "value": "host/proc"},
-                                            {"label": "OVS Switch", "value": "switch/ovs"},
-                                            {"label": "Bridge Switch", "value": "switch/lxbr"},
-                                            {"label": "Pod K8s", "value": "host/k8spod"},
-                                        ],
-                                    ),
+                                    html.Button("+ Node", id="btn-new-node"),
                                     html.Button("+ Link", id="btn-add-link"),
                                     html.Button("+ Group", id="btn-add-group"),
                                 ],
@@ -786,6 +773,60 @@ class APIServer:
                     ),  # end dcc.Tabs
                 ],
             ),  # end div four columns
+            html.Div(
+                id="new-node-modal",
+                className="mnsec-modal",
+                hidden=True,
+                children=[
+                    html.Div(
+                        className="mnsec-modal-content",
+                        children=[
+                            html.Div(
+                                className="mnsec-modal-header",
+                                children=[
+                                    html.H4("Add New Node"),
+                                    html.Button(
+                                        "×",
+                                        id="new-node-close",
+                                        type="button",
+                                        className="mnsec-modal-close",
+                                        title="Close",
+                                    ),
+                                ],
+                            ),
+                            html.Label("Name:", htmlFor="new-node-name"),
+                            dcc.Input(
+                                id="new-node-name",
+                                type="text",
+                                placeholder="only letters and numbers, e.g. h1",
+                                style={"width": "100%"},
+                            ),
+                            html.Label("Node Type:", htmlFor="new-node-type"),
+                            dcc.Dropdown(
+                                id="new-node-type",
+                                placeholder="Select a node type...",
+                                clearable=False,
+                                options=node_type_options,
+                            ),
+                            html.Label("Additional attributes:"),
+                            html.Div(id="new-node-attrs"),
+                            html.Button(
+                                "+ attribute",
+                                id="new-node-add-attr",
+                                type="button",
+                                className="mnsec-modal-add-attr",
+                            ),
+                            html.Div(
+                                className="mnsec-modal-actions",
+                                children=[
+                                    html.Button("Cancel", id="new-node-cancel", type="button"),
+                                    html.Button("Create", id="new-node-submit", type="button"),
+                                ],
+                            ),
+                        ],
+                    ),
+                ],
+            ),  # end new-node-modal
         ])
 
         @self.socketio.on("pty-input", namespace="/pty")
