@@ -110,9 +110,10 @@ function mnsecSubmitNewNode(nodeTypeStr, nodeNameRaw, connectTo) {
       params[name] = value;
     }
   });
-  // optionally connect the new node to an existing one
-  if (connectTo) {
-    params["connectTo"] = connectTo;
+  // optionally connect the new node to one or more existing nodes
+  const connectTargets = Array.isArray(connectTo) ? connectTo : (connectTo ? [connectTo] : []);
+  if (connectTargets.length) {
+    params["connectTo"] = connectTargets;
   }
   const loadingAddNode = document.querySelector('#loading-add-node');
   const result = requestAddNode(nodeName, nodeType[1], params);
@@ -139,10 +140,11 @@ function mnsecSubmitNewNode(nodeTypeStr, nodeNameRaw, connectTo) {
       },
       classes: ['rectangle'],
     });
-    // optionally connect the new node to an existing one
-    if (connectTo) {
-      mnsecCreateLink(nodeName, connectTo, true);
-    }
+    // draw an edge for each requested connection (links already created on
+    // the backend during add_node, so fetch the existing interfaces)
+    connectTargets.forEach(function (target) {
+      mnsecCreateLink(nodeName, target, true);
+    });
     mnsecCloseNewNodeModal();
   });
 }

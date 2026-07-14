@@ -826,13 +826,6 @@ class APIServer:
                                 clearable=False,
                                 options=node_type_options,
                             ),
-                            html.Label("Connect To:", htmlFor="new-node-connect-to"),
-                            dcc.Dropdown(
-                                id="new-node-connect-to",
-                                placeholder="(optional) connect to an existing node...",
-                                clearable=True,
-                                options=[],
-                            ),
                             html.Label("Additional attributes:"),
                             html.Div(id="new-node-attrs"),
                             html.Button(
@@ -840,6 +833,14 @@ class APIServer:
                                 id="new-node-add-attr",
                                 type="button",
                                 className="mnsec-modal-add-attr",
+                            ),
+                            html.Label("Connect To (optional):", htmlFor="new-node-connect-to"),
+                            dcc.Dropdown(
+                                id="new-node-connect-to",
+                                placeholder="connect to existing node(s)...",
+                                clearable=True,
+                                multi=True,
+                                options=[],
                             ),
                             html.Div(
                                 className="mnsec-modal-actions",
@@ -1030,7 +1031,7 @@ class APIServer:
             node2 = self.mnsec[data["node2"]]
             links = node1.connectionsTo(node2)
             if links:
-                return {"intf1": links[0][0], "intf2": links[0[1]]}, 200
+                return {"intf1": links[0][0], "intf2": links[0][1]}, 200
         try:
             link = self.mnsec.addLink(data["node1"], data["node2"])
             assert link
@@ -1070,7 +1071,7 @@ class APIServer:
         info(f"APIServer listening on port {self.listen}:{self.port}\n")
         try:
             #self.server.serve_forever()
-            self.app.run(host=self.listen, port=self.port, debug=True, use_reloader=False)
+            self.app.run(host=self.listen, port=self.port, debug=False, use_reloader=True)
         except SystemExit:
             pass
         except Exception as error:
