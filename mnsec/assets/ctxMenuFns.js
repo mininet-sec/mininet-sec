@@ -17,11 +17,17 @@ function requestAddNode(nodeName, nodeType, params) {
     var resText = request();
     return resText;
 }
+// canvas position for the node being added: set by the "Add Node" context menu
+// entry, consumed when the modal opens (null when opened from the menubar)
+let mnsecPendingNodePosition = null;
+let mnsecNewNodePosition = null;
 function mnsecOpenNewNodeModal() {
   const modal = document.querySelector('#new-node-modal');
   if (!modal) {
     return;
   }
+  mnsecNewNodePosition = mnsecPendingNodePosition;
+  mnsecPendingNodePosition = null;
   // attach dismiss handlers only once (nodes persist across opens)
   if (!modal.dataset.mnsecBound) {
     modal.dataset.mnsecBound = '1';
@@ -52,6 +58,7 @@ function mnsecCloseNewNodeModal() {
   if (modal) {
     modal.hidden = true;
   }
+  mnsecNewNodePosition = null;
 }
 function mnsecAddAttrRow() {
   const container = document.querySelector('#new-node-attrs');
@@ -131,7 +138,7 @@ function mnsecSubmitNewNode(nodeTypeStr, nodeNameRaw, connectTo) {
       // request failed (requestAddNode already alerted): keep modal open to retry
       return;
     }
-    cy.add({
+    const newNode = {
       data: {
         id: nodeName,
         label: nodeName,
@@ -139,7 +146,15 @@ function mnsecSubmitNewNode(nodeTypeStr, nodeNameRaw, connectTo) {
         url: `/assets/${displayImg}`,
       },
       classes: ['rectangle'],
-    });
+    };
+    // when opened from the canvas context menu, place the node where clicked
+    if (mnsecNewNodePosition) {
+      newNode.position = {
+        x: mnsecNewNodePosition.x,
+        y: mnsecNewNodePosition.y,
+      };
+    }
+    cy.add(newNode);
     // draw an edge for each requested connection (links already created on
     // the backend during add_node, so fetch the existing interfaces)
     connectTargets.forEach(function (target) {
@@ -272,54 +287,14 @@ window.dashCytoscapeFunctions = Object.assign(
     {},
     window.dashCytoscapeFunctions,
     {
-        mnsec_add_host: function (event) {
-            var pos = event.position || event.cyPosition;
-	    var hostId = cy.nodes("[type = 'host']").length + 1;
-            var result = requestAddNode(`h${hostId}`, "proc", {});
-            if (result) {
-              result.then(function(displayImg){
-                if (!displayImg) {
-                  return "";
-                }
-                cy.add({
-                  data: {
-		    id: `h${hostId}`,
-		    label: `h${hostId}`,
-		    type: "host",
-                    url: `/assets/${displayImg}`,
-                  },
-                  position: {
-                      x: pos.x,
-                      y: pos.y,
-                  },
-                  classes: ['rectangle'],
-                });
-              });
-            }
-        },
-        mnsec_add_switch: function (event) {
-            var pos = event.position || event.cyPosition;
-	    var switchId = cy.nodes("[type = 'switch']").length + 1;
-            var result = requestAddNode(`s${switchId}`, "ovs", {});
-            if (result) {
-              result.then(function(displayImg){
-                if (!displayImg) {
-                  return "";
-                }
-                cy.add({
-                  data: {
-		    id: `s${switchId}`,
-		    label: `s${switchId}`,
-		    type: "switch",
-                    url: `/assets/${displayImg}`,
-                  },
-                  position: {
-                      x: pos.x,
-                      y: pos.y,
-                  },
-                  classes: ['rectangle'],
-                });
-              });
+        mnsec_add_node: function (event) {
+            // remember where the user right-clicked so the new node lands there,
+            // then click the menubar button: that opens the modal and also lets
+            // Dash refresh the "Connect To" options
+            mnsecPendingNodePosition = event.position || event.cyPosition;
+            const btn = document.querySelector('#btn-new-node');
+            if (btn) {
+              btn.click();
             }
         },
         mnsec_add_link: function (event) {

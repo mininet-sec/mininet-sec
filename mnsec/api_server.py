@@ -509,18 +509,11 @@ class APIServer:
 
         context_menu = [
             {
-                "id": "add-host",
-                "label": "Add Host",
-                "tooltipText": "Add Host",
+                "id": "add-node",
+                "label": "Add Node",
+                "tooltipText": "Add Node",
                 "availableOn": ["canvas"],
-                "onClickCustom": "mnsec_add_host",
-            },
-            {
-                "id": "add-switch",
-                "label": "Add Switch",
-                "tooltipText": "Add Switch",
-                "availableOn": ["canvas"],
-                "onClickCustom": "mnsec_add_switch",
+                "onClickCustom": "mnsec_add_node",
             },
             {
                 "id": "add-link",
