@@ -999,13 +999,14 @@ class APIServer:
 
     def add_node(self):
         data = flask.request.get_json(force=True)
+        info(f"\nadd_node {data}\n")
         for req_field in ["name", "type"]:
             if not data.get(req_field):
                 return f"Missing field {req_field} on request", 400
         if data["name"] in self.mnsec:
             return f"Node already exists: {data['name']}", 400
         params = {}
-        for k, v in data.get("params", {}):
+        for k, v in data.get("params", {}).items():
             try:
                 params[k] = json.loads(v)
             except:
@@ -1020,6 +1021,7 @@ class APIServer:
 
     def add_link(self):
         data = flask.request.get_json(force=True)
+        info(f"\nadd_link {data}\n")
         for node in ["node1", "node2"]:
             if not data.get(node):
                 return f"Missing field {node} on request", 400
@@ -1031,7 +1033,7 @@ class APIServer:
             node2 = self.mnsec[data["node2"]]
             links = node1.connectionsTo(node2)
             if links:
-                return {"intf1": links[0][0], "intf2": links[0][1]}, 200
+                return {"intf1": links[0][0].name, "intf2": links[0][1].name}, 200
         try:
             link = self.mnsec.addLink(data["node1"], data["node2"])
             assert link
@@ -1071,7 +1073,7 @@ class APIServer:
         info(f"APIServer listening on port {self.listen}:{self.port}\n")
         try:
             #self.server.serve_forever()
-            self.app.run(host=self.listen, port=self.port, debug=False, use_reloader=True)
+            self.app.run(host=self.listen, port=self.port, debug=False, use_reloader=False)
         except SystemExit:
             pass
         except Exception as error:
