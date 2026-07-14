@@ -408,16 +408,19 @@ class Mininet_sec(Mininet):
 
     def addNodeKind(self, name, kind, **params):
         info(f"\nAdding node {name=} {kind=} {params=}\n")
+        connectTo = params.pop("connectTo", [])
         cls = HOSTS.get(kind)
         if cls:
             host = self.addHost(name, cls=cls, **params)
             if hasattr( host, 'post_created' ):
                 host.post_created()
+            info(f"\nAdding link {connectTo}\n")
             self.startHost(host)
             return host
         cls = SWITCHES.get(kind)
         if cls:
             switch = self.addSwitch(name, cls=cls, **params)
+            info(f"\nAdding link {connectTo}\n")
             switch.start( self.controllers )
             return switch
         raise ValueError(f"Invalid Node Type: {kind}")

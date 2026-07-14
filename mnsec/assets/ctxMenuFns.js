@@ -80,7 +80,7 @@ function mnsecAddAttrRow() {
   row.appendChild(removeBtn);
   container.appendChild(row);
 }
-function mnsecSubmitNewNode(nodeTypeStr, nodeNameRaw) {
+function mnsecSubmitNewNode(nodeTypeStr, nodeNameRaw, connectTo) {
   if (!nodeTypeStr) {
     alert('Please select a node type');
     return;
@@ -110,6 +110,10 @@ function mnsecSubmitNewNode(nodeTypeStr, nodeNameRaw) {
       params[name] = value;
     }
   });
+  // optionally connect the new node to an existing one
+  if (connectTo) {
+    params["connectTo"] = connectTo;
+  }
   const loadingAddNode = document.querySelector('#loading-add-node');
   const result = requestAddNode(nodeName, nodeType[1], params);
   if (!result) {
@@ -135,6 +139,10 @@ function mnsecSubmitNewNode(nodeTypeStr, nodeNameRaw) {
       },
       classes: ['rectangle'],
     });
+    // optionally connect the new node to an existing one
+    if (connectTo) {
+      mnsecCreateLink(nodeName, connectTo, true);
+    }
     mnsecCloseNewNodeModal();
   });
 }
@@ -157,40 +165,48 @@ function mnsecAddLink() {
       alert('Error: more than 2 nodes selected, cannot add edge');
   }
   if (source && target) {
-      const requestOptions = {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({node1: source, node2: target})
-      };
-      fetch('/add_link', requestOptions)
-          .then(response => {
-              if (!response.ok) {
-                  response.text().then(text => {
-                      alert(`Error while adding node: ${text}`);
-                  });
-                  return false;
-              }
-              return response.json();
-          })
-          .then(result => {
-              if (!result) {
-                return false;
-              }
-	      const intf1 = result["intf1"].split("-");
-	      const intf2 = result["intf2"].split("-");
-              cy.add({
-                  data: {
-                      id: Date.now(),
-                      source: source,
-                      target: target,
-                      slabel: intf1.at(-1),
-                      tlabel: intf2.at(-1),
-                      source_interface: result["intf1"],
-                      target_interface: result["intf2"],
-                  },
-              });
-          });
+      mnsecCreateLink(source, target);
   }
+}
+function mnsecCreateLink(source, target, getExisting = false) {
+  const params = {node1: source, node2: target};
+  if (getExisting) {
+    params["getExisting"] = true;
+  }
+  const requestOptions = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params)
+  };
+  return fetch('/add_link', requestOptions)
+      .then(response => {
+          if (!response.ok) {
+              response.text().then(text => {
+                  alert(`Error while adding link: ${text}`);
+              });
+              return false;
+          }
+          return response.json();
+      })
+      .then(result => {
+          if (!result) {
+            return false;
+          }
+	  const intf1 = result["intf1"].split("-");
+	  const intf2 = result["intf2"].split("-");
+          cy.add({
+              data: {
+                  id: Date.now(),
+                  source: source,
+                  target: target,
+                  slabel: intf1.at(-1),
+                  tlabel: intf2.at(-1),
+                  source_interface: result["intf1"],
+                  target_interface: result["intf2"],
+              },
+          });
+          return true;
+      });
 }
 function mnsecAddGroup() {
   var groupId = cy.nodes("[type = 'group']").length + 1;

@@ -174,6 +174,23 @@ class APIServer:
             return True
 
         @callback(
+            Output('new-node-connect-to', 'options'),
+            Output('new-node-connect-to', 'value'),
+            Input('btn-new-node', 'n_clicks'),
+            prevent_initial_call=True,
+        )
+        def populateConnectTo(n_clicks):
+            # populate "Connect To" with existing hosts/switches, excluding
+            # K8sPod nodes (they rely on tunnel-based links), and reset any
+            # previous selection each time the modal is opened
+            options = []
+            for node in list(self.mnsec.hosts) + list(self.mnsec.switches):
+                if self.mnsec.getObjKind(node) == "k8spod":
+                    continue
+                options.append({"label": node.name, "value": node.name})
+            return options, None
+
+        @callback(
             Output('cytoscape', 'stylesheet'),
             Input('show-interface-name', 'value'),
             prevent_initial_call=True,
@@ -367,9 +384,9 @@ class APIServer:
 
         clientside_callback(
             """
-            function(n_clicks, nodeType, nodeName) {
+            function(n_clicks, nodeType, nodeName, connectTo) {
               if (n_clicks) {
-                mnsecSubmitNewNode(nodeType, nodeName);
+                mnsecSubmitNewNode(nodeType, nodeName, connectTo);
               }
               return dash_clientside.no_update;
             }
@@ -378,6 +395,7 @@ class APIServer:
             Input("new-node-submit", "n_clicks"),
             State("new-node-type", "value"),
             State("new-node-name", "value"),
+            State("new-node-connect-to", "value"),
             prevent_initial_call=True,
         )
 
@@ -808,6 +826,13 @@ class APIServer:
                                 clearable=False,
                                 options=node_type_options,
                             ),
+                            html.Label("Connect To:", htmlFor="new-node-connect-to"),
+                            dcc.Dropdown(
+                                id="new-node-connect-to",
+                                placeholder="(optional) connect to an existing node...",
+                                clearable=True,
+                                options=[],
+                            ),
                             html.Label("Additional attributes:"),
                             html.Div(id="new-node-attrs"),
                             html.Button(
@@ -978,9 +1003,12 @@ class APIServer:
                 return f"Missing field {req_field} on request", 400
         if data["name"] in self.mnsec:
             return f"Node already exists: {data['name']}", 400
-        params = data.get("params")
-        if not isinstance(params, dict):
-            params = {}
+        params = {}
+        for k, v in data.get("params", {}):
+            try:
+                params[k] = json.loads(v)
+            except:
+                params[k] = v
         try:
             node = self.mnsec.addNodeKind(data["name"], data["type"], **params)
             assert node
@@ -997,6 +1025,12 @@ class APIServer:
             if data[node] not in self.mnsec:
                 return f"Node does not exist: {data[node]}", 400
 
+        if "getExisting" in data:
+            node1 = self.mnsec[data["node1"]]
+            node2 = self.mnsec[data["node2"]]
+            links = node1.connectionsTo(node2)
+            if links:
+                return {"intf1": links[0][0], "intf2": links[0[1]]}, 200
         try:
             link = self.mnsec.addLink(data["node1"], data["node2"])
             assert link
