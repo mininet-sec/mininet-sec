@@ -240,6 +240,8 @@ function mnsecCreateLink(source, target, getExisting = false) {
                   target_interface: result["intf2"],
               },
           });
+          // if it fails to update the topology, force the render to redraw
+          cy.forceRender();
           return true;
       });
 }
