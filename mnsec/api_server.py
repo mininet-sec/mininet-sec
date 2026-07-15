@@ -1067,7 +1067,9 @@ class APIServer:
             assert node
         except Exception as exc:
             return f"failed to add node: {exc}", 424
-        display_image = getattr(node, "display_image", "computer.png")
+        display_image = params.get("img_url", "").split("/")[-1]
+        if not display_image:
+            display_image = getattr(node, "display_image", "computer.png")
         return display_image, 200
 
     def add_link(self):
