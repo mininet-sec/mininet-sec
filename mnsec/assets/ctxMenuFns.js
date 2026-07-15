@@ -141,12 +141,17 @@ function mnsecSubmitNewNode(nodeTypeStr, nodeNameRaw, connectTo) {
     params["connectTo"] = connectTargets;
   }
   const loadingAddNode = document.querySelector('#loading-add-node');
+  const btnNewNodeSubmit = document.querySelector('#new-node-submit');
+  const spinner = document.createElement('span');
+  spinner.className = 'loading-spinner';
   const result = requestAddNode(nodeName, nodeType[1], params);
   if (!result) {
     return;
   }
   if (loadingAddNode) {
     loadingAddNode.style.display = 'flex';
+    btnNewNodeSubmit.prepend(spinner);
+    btnNewNodeSubmit.style.pointerEvents = 'none';
   }
   result.then(function (displayImg) {
     if (loadingAddNode) {
@@ -179,6 +184,8 @@ function mnsecSubmitNewNode(nodeTypeStr, nodeNameRaw, connectTo) {
       mnsecCreateLink(nodeName, target, true);
     });
     mnsecCloseNewNodeModal();
+    btnNewNodeSubmit.style.pointerEvents = 'auto';
+    spinner.remove();
   });
 }
 function mnsecAddLink() {

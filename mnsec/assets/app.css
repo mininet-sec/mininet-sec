@@ -160,3 +160,22 @@
     gap: .5em;
     margin-top: 1.5em;
 }
+
+.loading-spinner {
+    width: 1.5em;
+    height: 1.5em;
+    margin-right: 1em;
+    border: 3px solid rgba(0, 0, 0, 0.1);
+    border-radius: 50%;
+    border-top-color: #3498db;
+    animation: spin 1s linear infinite;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+/* Keyframes for continuous rotation */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
