@@ -60,7 +60,7 @@ function mnsecCloseNewNodeModal() {
   }
   mnsecNewNodePosition = null;
 }
-function mnsecAddAttrRow() {
+function mnsecAddAttrRow(name, value) {
   const container = document.querySelector('#new-node-attrs');
   if (!container) {
     return;
@@ -71,10 +71,12 @@ function mnsecAddAttrRow() {
   keyInput.type = 'text';
   keyInput.placeholder = 'name';
   keyInput.className = 'attr-key';
+  keyInput.value = name || '';
   const valInput = document.createElement('input');
   valInput.type = 'text';
   valInput.placeholder = 'value';
   valInput.className = 'attr-value';
+  valInput.value = value || '';
   const removeBtn = document.createElement('button');
   removeBtn.type = 'button';
   removeBtn.className = 'attr-remove';
@@ -86,6 +88,22 @@ function mnsecAddAttrRow() {
   row.appendChild(valInput);
   row.appendChild(removeBtn);
   container.appendChild(row);
+}
+// replace the attribute rows with the params inherited from an existing node;
+// the user is free to edit, remove or add more rows afterwards
+function mnsecPopulateAttrRows(params) {
+  const container = document.querySelector('#new-node-attrs');
+  if (!container) {
+    return;
+  }
+  container.innerHTML = '';
+  if (!params) {
+    return;
+  }
+  Object.keys(params).forEach(function (name) {
+    const value = params[name];
+    mnsecAddAttrRow(name, typeof value === 'string' ? value : JSON.stringify(value));
+  });
 }
 function mnsecSubmitNewNode(nodeTypeStr, nodeNameRaw, connectTo) {
   if (!nodeTypeStr) {

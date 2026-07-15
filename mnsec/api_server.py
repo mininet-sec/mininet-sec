@@ -176,19 +176,34 @@ class APIServer:
         @callback(
             Output('new-node-connect-to', 'options'),
             Output('new-node-connect-to', 'value'),
+            Output('new-node-inherit-from', 'options'),
+            Output('new-node-inherit-from', 'value'),
             Input('btn-new-node', 'n_clicks'),
             prevent_initial_call=True,
         )
-        def populateConnectTo(n_clicks):
-            # populate "Connect To" with existing hosts/switches, excluding
-            # K8sPod nodes (they rely on tunnel-based links), and reset any
-            # previous selection each time the modal is opened
-            options = []
+        def populateModalNodeLists(n_clicks):
+            # refresh the node lists and reset previous selections every time
+            # the modal is opened
+            connect_to = []
+            inherit_from = []
             for node in list(self.mnsec.hosts) + list(self.mnsec.switches):
+                inherit_from.append({"label": node.name, "value": node.name})
+                # K8sPod nodes rely on tunnel-based links: not connectable here
                 if self.mnsec.getObjKind(node) == "k8spod":
                     continue
-                options.append({"label": node.name, "value": node.name})
-            return options, None
+                connect_to.append({"label": node.name, "value": node.name})
+            return connect_to, None, inherit_from, None
+
+        @callback(
+            Output('new-node-inherit-params', 'data'),
+            Input('new-node-inherit-from', 'value'),
+            prevent_initial_call=True,
+        )
+        def inheritNodeParams(node_name):
+            node = self.mnsec.get(node_name) if node_name else None
+            if not node:
+                return {}
+            return self.getInheritableParams(node)
 
         @callback(
             Output('cytoscape', 'stylesheet'),
@@ -365,6 +380,18 @@ class APIServer:
             """,
             Output('new-node-add-attr', 'id'),
             Input("new-node-add-attr", "n_clicks"),
+            prevent_initial_call=True,
+        )
+
+        clientside_callback(
+            """
+            function(params) {
+              mnsecPopulateAttrRows(params);
+              return dash_clientside.no_update;
+            }
+            """,
+            Output('new-node-inherit-params', 'id'),
+            Input("new-node-inherit-params", "data"),
             prevent_initial_call=True,
         )
 
@@ -819,6 +846,17 @@ class APIServer:
                                 clearable=False,
                                 options=node_type_options,
                             ),
+                            html.Label(
+                                "Inherit node attributes from (optional):",
+                                htmlFor="new-node-inherit-from",
+                            ),
+                            dcc.Dropdown(
+                                id="new-node-inherit-from",
+                                placeholder="copy attributes from an existing node...",
+                                clearable=True,
+                                options=[],
+                            ),
+                            dcc.Store(id="new-node-inherit-params"),
                             html.Label("Additional attributes:"),
                             html.Div(id="new-node-attrs"),
                             html.Button(
@@ -989,6 +1027,26 @@ class APIServer:
                         "port_no": intf.node.ports[intf]
                     }
         return ifindexes, 200
+
+    def getInheritableParams(self, node):
+        """Return the params of a node that can be reused as kwargs for a new one.
+
+        Internal params and params driven by other fields of the "add node"
+        modal are skipped: `kind` in particular would clash with the positional
+        argument of addNodeKind().
+        """
+        skip = {"homeDir", "isSwitch", "posX", "posY", "kind", "connectTo"}
+        params = {}
+        for name, value in (node.params or {}).items():
+            if name in skip or value is None or value == "":
+                continue
+            try:
+                json.dumps(value)
+            except (TypeError, ValueError):
+                warning(f"Ignoring non-serializable param {name=} of node {node.name}\n")
+                continue
+            params[name] = value
+        return params
 
     def add_node(self):
         data = flask.request.get_json(force=True)
