@@ -1035,7 +1035,7 @@ class APIServer:
         modal are skipped: `kind` in particular would clash with the positional
         argument of addNodeKind().
         """
-        skip = {"homeDir", "isSwitch", "posX", "posY", "kind", "connectTo"}
+        skip = {"homeDir", "isSwitch", "posX", "posY", "kind", "connectTo", "hostID"}
         params = {}
         for name, value in (node.params or {}).items():
             if name in skip or value is None or value == "":
