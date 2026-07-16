@@ -138,7 +138,7 @@ class Mininet_sec(Mininet):
     def __init__(
         self, topoFile="", workDir="/tmp/mnsec", apps="", enable_api=True,
         enable_sflow=False, sflow_collector="127.0.0.1:6343", sflow_sampling=64, sflow_polling=10,
-        captureDir="", captureFileSize="10", captureWebSharkUrl="", settingsFile="",
+        captureDir="/tmp/mnsec-capture", captureFileSize="10", captureWebSharkUrl="", settingsFile="",
         **kwargs,
     ):
         """Create Mininet object.
@@ -149,7 +149,8 @@ class Mininet_sec(Mininet):
            sflow_collector: IP address and port of the sFlow collector
            sflow_sampling: sFlow sampling rate (collects 1 every N packets)
            sflow_polling: polling interval (send collected flows every N seconds)
-           captureDir: directory to store tcpdump packet capture (empty disables packet capture)
+           captureDir: directory to store tcpdump packet capture (empty disables
+               packet capture). Default to /tmp/mnsec-capture
            captureFileSize: max size for packet capture file (only one file is saved). Default to
                10M. The unit can be a suffix of k/K, m/M or g/G (default to M)
            captureWebSharkUrl: URL to webshark used to visualize packet capture pcap
