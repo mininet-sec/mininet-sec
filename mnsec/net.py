@@ -138,7 +138,7 @@ class Mininet_sec(Mininet):
     def __init__(
         self, topoFile="", workDir="/tmp/mnsec", apps="", enable_api=True,
         enable_sflow=False, sflow_collector="127.0.0.1:6343", sflow_sampling=64, sflow_polling=10,
-        captureDir="", captureFileSize="10", captureWebSharkUrl="", secretsFile="",
+        captureDir="", captureFileSize="10", captureWebSharkUrl="", settingsFile="",
         **kwargs,
     ):
         """Create Mininet object.
@@ -153,7 +153,7 @@ class Mininet_sec(Mininet):
            captureFileSize: max size for packet capture file (only one file is saved). Default to
                10M. The unit can be a suffix of k/K, m/M or g/G (default to M)
            captureWebSharkUrl: URL to webshark used to visualize packet capture pcap
-           secretsFile: filename which contains parameters to configure mnsec (post startup)
+           settingsFile: filename which contains parameters to configure mnsec (post startup)
         """
         self.apps = apps
         self.workDir = workDir
@@ -165,7 +165,7 @@ class Mininet_sec(Mininet):
         self.captureDir = captureDir
         self.captureFileSize = captureFileSize
         self.captureWebSharkUrl = captureWebSharkUrl
-        self.secretsFile = secretsFile
+        self.settingsFile = settingsFile
 
         self.cleanups = []
         self.topo_dict = {}
@@ -304,7 +304,7 @@ class Mininet_sec(Mininet):
 
         Mininet.start(self)
 
-        self.readSecrets()
+        self.readSettings()
 
         if self.sflow_enabled:
             self.enable_sflow()
@@ -312,15 +312,15 @@ class Mininet_sec(Mininet):
         if self.run_api_server:
             self.api_server.setup()
 
-    def readSecrets(self):
-        if not self.secretsFile:
+    def readSettings(self):
+        if not self.settingsFile:
             return
         try:
-            self.secrets = yaml.load(open(self.secretsFile), Loader=yaml.Loader)
+            self.settings = yaml.load(open(self.settingsFile), Loader=yaml.Loader)
         except Exception as exc:
-            error(f"Error reading secrets file: {exc}")
+            error(f"Error reading settings file: {exc}")
             return
-        for k, v in self.secrets.items():
+        for k, v in self.settings.items():
             setattr(self, k, v)
 
     def setupHostHomeDir(self, host):

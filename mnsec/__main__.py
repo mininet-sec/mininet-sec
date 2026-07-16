@@ -287,8 +287,8 @@ class MininetRunner( object ):
                          help='Maximum size for capture files (only one file is saved)' )
         opts.add_option( '--capture_webshark_url', type='string', default='',
                          help='URL for webshark service' )
-        opts.add_option( '--secrets_file', type='string', default='',
-                         help='Filename containing secrets that will overwrite mnsec params' )
+        opts.add_option( '--settings_file', type='string', default='',
+                         help='Filename containing settings that will overwrite mnsec params' )
 
         self.options, self.args = opts.parse_args()
 
@@ -397,7 +397,7 @@ class MininetRunner( object ):
                   sflow_sampling=opts.sflow_sampling, sflow_polling=opts.sflow_polling,
                   captureDir=opts.capture_dir, captureFileSize=opts.capture_file_size,
                   captureWebSharkUrl=opts.capture_webshark_url,
-                  secretsFile=opts.secrets_file,
+                  settingsFile=opts.settings_file,
                   listenPort=opts.listenport )
 
         if opts.ensure_value( 'nat', False ):
