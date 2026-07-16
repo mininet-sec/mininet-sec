@@ -581,7 +581,7 @@ class Mininet_sec(Mininet):
         if isinstance(node1, K8sPod):
             return False
         cmdOut = quietRun(f"ip link show dev {intfName}").strip()
-        return f"{intfName}@" in cmdOut
+        return intfName in cmdOut
 
     def runTcpdump(self, intfName, captureFile):
         cmdOut = quietRun(f"tcpdump_wrapper.sh start {intfName} {self.captureDir}/{captureFile} {self.captureFileSize}").strip()
