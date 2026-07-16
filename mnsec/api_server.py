@@ -708,6 +708,14 @@ class APIServer:
                   #'border-color': 'SteelBlue',
                 }
             },
+            # keep the user-chosen group color when the group is selected
+            # (must come after :selected to take precedence)
+            {
+                'selector': '.groupnode:selected',
+                'style': {
+                  'background-color': 'data(color)',
+                }
+            },
         ]
 
         return_layout = html.Div([
