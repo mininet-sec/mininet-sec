@@ -13,6 +13,9 @@
 - Added option to run the Kubernetes Pods without isolating the control network (i.e., network provided by Kubernets, usually `eth0`) keeping the control net in the root netns (`isolateControlNet`)
 - Fixed issue with bind9 mnsec service for the regex to validade zone being added
 - Added support for sysctls definition on Kubernetes Pods
+- Enhanced open terminal on right click to leverage event target instead of selected node (#60)
+- Added support for imagePullSecrets on Kubernetes Pods
+- Added support for RemoteController with DNS in addition to IP
 - Added feature for allow packet capture and visualization (ingrated with webshark)
 
 ## [1.1.0] - 2025-01-10
