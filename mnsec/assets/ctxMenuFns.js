@@ -351,6 +351,72 @@ function mnsecSubmitNewGroup(groupShape) {
           mnsecCloseNewGroupModal();
       });
 }
+// keep the group style panel (Settings tab) in sync with the selected group:
+// called from the cytoscape select/unselect handler. The color picker is
+// created lazily here since dcc.Input does not support type=color
+function mnsecSyncGroupStylePanel() {
+  const selectedNodes = cy.nodes(':selected');
+  if (selectedNodes.length !== 1 || selectedNodes[0].data('type') !== 'group') {
+    return;
+  }
+  const wrap = document.querySelector('#change-group-color-wrap');
+  if (!wrap) {
+    return;
+  }
+  let colorInput = document.querySelector('#change-group-color');
+  if (!colorInput) {
+    colorInput = document.createElement('input');
+    colorInput.type = 'color';
+    colorInput.id = 'change-group-color';
+    colorInput.addEventListener('change', function (evt) {
+      mnsecUpdateGroupStyle(evt.target.value, null);
+    });
+    wrap.appendChild(colorInput);
+  }
+  colorInput.value = selectedNodes[0].data('color') || '#f5f5f5';
+}
+// change color and/or shape of the currently selected group, persisting on
+// the backend via /add_group (which updates the members' group params)
+function mnsecUpdateGroupStyle(color, shape) {
+  const selectedNodes = cy.nodes(':selected');
+  if (selectedNodes.length !== 1 || selectedNodes[0].data('type') !== 'group') {
+    return;
+  }
+  const group = selectedNodes[0];
+  const changes = {};
+  if (color && color !== group.data('color')) {
+    changes.color = color;
+  }
+  if (shape && shape !== group.data('shape')) {
+    changes.shape = shape;
+  }
+  if (Object.keys(changes).length === 0) {
+    return;
+  }
+  const memberIds = group.children().map((node) =>
+      node.data("label")
+  );
+  const requestOptions = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(Object.assign({nodes: memberIds, group: group.data('label')}, changes))
+  };
+  fetch('/add_group', requestOptions)
+      .then(response => {
+          if (!response.ok) {
+              response.text().then(text => {
+                  alert(`Error while updating group: ${text}`);
+              });
+              return false;
+          }
+          return response.json();
+      })
+      .then(result => {
+          if (result) {
+              group.data(changes);
+          }
+      });
+}
 // keyboard handling for the modals: Esc closes, Enter submits
 // (Enter only from the text inputs, so it does not fire while picking from a dropdown)
 document.addEventListener('keydown', function (evt) {

@@ -180,6 +180,15 @@ class APIServer:
             return True
 
         @callback(
+            Output('input-group-shape', 'value'),
+            Input('cytoscape', 'selectedNodeData')
+        )
+        def displayGroupShape(data):
+            if data and len(data) == 1 and data[0].get("type") == "group":
+                return data[0].get("shape", GROUP_SHAPES[0])
+            return no_update
+
+        @callback(
             Output('new-node-connect-to', 'options'),
             Output('new-node-connect-to', 'value'),
             Output('new-node-inherit-from', 'options'),
@@ -341,6 +350,7 @@ class APIServer:
               });
 
               cy.on('select unselect', 'node', function(evt) {
+                mnsecSyncGroupStylePanel();
                 const link = document.querySelector('#link-open-term');
                 link.style.display = "none";
                 link.href = '#';
@@ -484,6 +494,23 @@ class APIServer:
             Output('new-group-submit', 'id'),
             Input("new-group-submit", "n_clicks"),
             State("new-group-shape", "value"),
+            prevent_initial_call=True,
+        )
+
+        # mnsecUpdateGroupStyle() is a no-op when the shape matches the
+        # selected group, so the sync done by displayGroupShape() when a
+        # group gets selected does not trigger a spurious update
+        clientside_callback(
+            """
+            function(groupShape) {
+              if (groupShape) {
+                mnsecUpdateGroupStyle(null, groupShape);
+              }
+              return dash_clientside.no_update;
+            }
+            """,
+            Output('input-group-shape', 'id'),
+            Input("input-group-shape", "value"),
             prevent_initial_call=True,
         )
 
@@ -811,7 +838,22 @@ class APIServer:
                                                             html.Pre(id='change-node-id'),
                                                             html.Div(id="change-node-data", hidden=True, children=[
                                                                 'Node Label:',
-                                                                dcc.Input(id='input-node-label', type='text', debounce=True, value="")
+                                                                dcc.Input(id='input-node-label', type='text', debounce=True, value=""),
+                                                                html.Br(),
+                                                                'Group Color:',
+                                                                # dcc.Input does not support type=color, so the
+                                                                # native picker is created inside this placeholder
+                                                                # by mnsecSyncGroupStylePanel()
+                                                                html.Div(id="change-group-color-wrap"),
+                                                                'Group Shape:',
+                                                                dcc.Dropdown(
+                                                                    id="input-group-shape",
+                                                                    clearable=False,
+                                                                    options=[
+                                                                        {"label": shape.replace("-", " ").title(), "value": shape}
+                                                                        for shape in GROUP_SHAPES
+                                                                    ],
+                                                                ),
                                                             ])
                                                         ],
                                                     ),
