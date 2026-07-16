@@ -252,20 +252,85 @@ function mnsecCreateLink(source, target, getExisting = false) {
           return true;
       });
 }
-function mnsecAddGroup() {
-  var groupId = cy.nodes("[type = 'group']").length + 1;
-  let groupName = prompt("Group name (only letters and numbers)", `group-${groupId}`);
-  if (!groupName) {
-    return false;
+// nodes selected when the group modal was opened: grouped on submit
+let mnsecNewGroupNodes = null;
+function mnsecOpenNewGroupModal() {
+  const modal = document.querySelector('#new-group-modal');
+  if (!modal) {
+    return;
   }
-  const selectedNodes = cy.nodes(":selected");
+  // groups cannot contain other groups, so only regular nodes are considered
+  const selectedNodes = cy.nodes(':selected').filter('[type != "group"]');
+  if (selectedNodes.length === 0) {
+    alert('Error: no nodes selected, please select the nodes to group first');
+    return;
+  }
+  mnsecNewGroupNodes = selectedNodes;
+  // attach dismiss handlers only once (nodes persist across opens)
+  if (!modal.dataset.mnsecBound) {
+    modal.dataset.mnsecBound = '1';
+    // clicking the backdrop (the overlay itself, not its content) closes
+    modal.addEventListener('click', function (evt) {
+      if (evt.target === modal) {
+        mnsecCloseNewGroupModal();
+      }
+    });
+    const closeBtn = document.querySelector('#new-group-close');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', mnsecCloseNewGroupModal);
+    }
+    // dcc.Input does not support type=color, so the native picker is created here
+    const colorWrap = document.querySelector('#new-group-color-wrap');
+    if (colorWrap) {
+      const colorInput = document.createElement('input');
+      colorInput.type = 'color';
+      colorInput.id = 'new-group-color';
+      colorWrap.appendChild(colorInput);
+    }
+  }
+  // reset fields for a fresh entry
+  const nameInput = document.querySelector('#new-group-name');
+  if (nameInput) {
+    nameInput.value = `group-${cy.nodes("[type = 'group']").length + 1}`;
+  }
+  const colorInput = document.querySelector('#new-group-color');
+  if (colorInput) {
+    colorInput.value = '#f5f5f5';
+  }
+  modal.hidden = false;
+}
+function mnsecCloseNewGroupModal() {
+  const modal = document.querySelector('#new-group-modal');
+  if (modal) {
+    modal.hidden = true;
+  }
+  mnsecNewGroupNodes = null;
+}
+function mnsecSubmitNewGroup(groupShape) {
+  // the name and color inputs are read straight from the DOM: the default
+  // name is set by mnsecOpenNewGroupModal() and the color picker is a native
+  // input, so neither is visible through Dash State
+  const nameInput = document.querySelector('#new-group-name');
+  const groupName = (nameInput ? nameInput.value : '').replace(/[^a-zA-Z0-9-]/g, '');
+  if (!groupName) {
+    alert('Invalid group name: use only letters, numbers and dashes');
+    return;
+  }
+  if (cy.getElementById(groupName).length > 0) {
+    alert(`Error: a node or group named ${groupName} already exists`);
+    return;
+  }
+  const colorInput = document.querySelector('#new-group-color');
+  const groupColor = colorInput ? colorInput.value : '#f5f5f5';
+  const shape = groupShape || 'rectangle';
+  const selectedNodes = mnsecNewGroupNodes;
   const selectedNodeIds = selectedNodes.map((node) =>
       node.data("label")
   );
   const requestOptions = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({nodes: selectedNodeIds, group: groupName})
+      body: JSON.stringify({nodes: selectedNodeIds, group: groupName, color: groupColor, shape: shape})
   };
   fetch('/add_group', requestOptions)
       .then(response => {
@@ -281,34 +346,40 @@ function mnsecAddGroup() {
           if (!result) {
              return false;
           }
-          cy.add({data: {id: groupName, label: groupName, type:"group"}, classes: ["groupnode"]});
+          cy.add({data: {id: groupName, label: groupName, type: "group", color: groupColor, shape: shape}, classes: ["groupnode"]});
           selectedNodes.move({parent: groupName});
+          mnsecCloseNewGroupModal();
       });
 }
-// keyboard handling for the new-node modal: Esc closes, Enter submits
-// (Enter only from the text inputs, so it does not fire while picking a type)
+// keyboard handling for the modals: Esc closes, Enter submits
+// (Enter only from the text inputs, so it does not fire while picking from a dropdown)
 document.addEventListener('keydown', function (evt) {
-  const modal = document.querySelector('#new-node-modal');
-  if (!modal || modal.hidden) {
-    return;
-  }
-  if (evt.key === 'Escape') {
-    evt.preventDefault();
-    mnsecCloseNewNodeModal();
-  } else if (evt.key === 'Enter') {
-    const active = document.activeElement;
-    const fromTextInput = active
-      && active.tagName === 'INPUT'
-      && active.closest('#new-node-modal')
-      && !active.closest('#new-node-type');
-    if (fromTextInput) {
-      const submitBtn = document.querySelector('#new-node-submit');
-      if (submitBtn) {
-        evt.preventDefault();
-        submitBtn.click();
+  [
+    {modal: '#new-node-modal', close: mnsecCloseNewNodeModal, submit: '#new-node-submit', dropdown: '#new-node-type'},
+    {modal: '#new-group-modal', close: mnsecCloseNewGroupModal, submit: '#new-group-submit', dropdown: '#new-group-shape'},
+  ].forEach(function (cfg) {
+    const modal = document.querySelector(cfg.modal);
+    if (!modal || modal.hidden) {
+      return;
+    }
+    if (evt.key === 'Escape') {
+      evt.preventDefault();
+      cfg.close();
+    } else if (evt.key === 'Enter') {
+      const active = document.activeElement;
+      const fromTextInput = active
+        && active.tagName === 'INPUT'
+        && active.closest(cfg.modal)
+        && !active.closest(cfg.dropdown);
+      if (fromTextInput) {
+        const submitBtn = document.querySelector(cfg.submit);
+        if (submitBtn) {
+          evt.preventDefault();
+          submitBtn.click();
+        }
       }
     }
-  }
+  });
 });
 window.dashCytoscapeFunctions = Object.assign(
     {},
@@ -333,7 +404,7 @@ window.dashCytoscapeFunctions = Object.assign(
             window.open(`/xterm/${nodeid}`, "_blank");
         },
         mnsec_add_group: function (event) {
-            mnsecAddGroup();
+            mnsecOpenNewGroupModal();
         },
     }
 );
