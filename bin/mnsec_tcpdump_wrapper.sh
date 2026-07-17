@@ -25,6 +25,7 @@ function stop() {
 }
 
 function start() {
+	mkdir -p $(dirname $CAP_FILE)
 	touch $CAP_FILE
 	chown $USER $CAP_FILE
 	tcpdump -ni $INTF -s 0 -w $CAP_FILE -Z $USER -U -C $MAX_SIZE -W 1 >/dev/null 2>&1 &

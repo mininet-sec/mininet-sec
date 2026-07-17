@@ -580,11 +580,11 @@ class Mininet_sec(Mininet):
     def isLocalNodeIntf(self, node1, intfName):
         if isinstance(node1, K8sPod):
             return False
-        cmdOut = quietRun(f"ip link show dev {intfName}").strip()
+        cmdOut = quietRun(f"ip link show dev {intfName} 2>/dev/null", shell=True).strip()
         return intfName in cmdOut
 
     def runTcpdump(self, intfName, captureFile):
-        cmdOut = quietRun(f"tcpdump_wrapper.sh start {intfName} {self.captureDir}/{captureFile} {self.captureFileSize}").strip()
+        cmdOut = quietRun(f"mnsec_tcpdump_wrapper.sh start {intfName} {self.captureDir}/{captureFile} {self.captureFileSize}").strip()
         if cmdOut:
             return False, f"Error running tcpdump - {cmdOut}"
         return True, captureFile
@@ -608,13 +608,13 @@ class Mininet_sec(Mininet):
         return False, "Cannot run packet capture on remote nodes"
 
     def stopPacketCapture(self, intfName1="", intfName2="", **kwargs):
-        cmdOut = quietRun(f"tcpdump_wrapper.sh status {intfName1}").strip()
+        cmdOut = quietRun(f"mnsec_tcpdump_wrapper.sh status {intfName1}").strip()
         if cmdOut == "running":
-            quietRun(f"tcpdump_wrapper.sh stop {intfName1}")
+            quietRun(f"mnsec_tcpdump_wrapper.sh stop {intfName1}")
             return True, "stopped"
-        cmdOut = quietRun(f"tcpdump_wrapper.sh status {intfName2}").strip()
+        cmdOut = quietRun(f"mnsec_tcpdump_wrapper.sh status {intfName2}").strip()
         if cmdOut == "running":
-            quietRun(f"tcpdump_wrapper.sh stop {intfName2}")
+            quietRun(f"mnsec_tcpdump_wrapper.sh stop {intfName2}")
             return True, "stopped"
         return False, "No capture running for any interface provided."
 

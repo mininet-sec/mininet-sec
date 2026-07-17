@@ -3,11 +3,12 @@ import yaml
 import flask
 import threading
 import textwrap
+import traceback
 from flask_socketio import SocketIO, disconnect
 #from werkzeug.serving import make_server
 from dash import Dash, html, dcc, Input, Output, State, callback, clientside_callback, get_asset_url, no_update
 import dash_cytoscape as cyto
-from mininet.log import info, warning
+from mininet.log import info, error, warning
 
 import pty
 import os
@@ -536,13 +537,6 @@ class APIServer:
                 "onClickCustom": "mnsec_start_capture",
             },
             {
-                "id": "view-link-capture",
-                "label": "View capture",
-                "tooltipText": "View Packet Capture",
-                "availableOn": ["edge"],
-                "onClickCustom": "mnsec_view_capture",
-            },
-            {
                 "id": "stop-link-capture",
                 "label": "Stop capture",
                 "tooltipText": "Stop Packet Capture",
@@ -550,6 +544,14 @@ class APIServer:
                 "onClickCustom": "mnsec_stop_capture",
             },
         ]
+        if self.mnsec.captureWebSharkUrl:
+            context_menu.append({
+                "id": "view-link-capture",
+                "label": "View capture",
+                "tooltipText": "View Packet Capture",
+                "availableOn": ["edge"],
+                "onClickCustom": "mnsec_view_capture",
+            })
         styles = {
             "json-output": {
                 "overflowY": "scroll",
@@ -1007,23 +1009,35 @@ class APIServer:
         return flask.render_template("xterm.html", host=host, gtag=self.gtag)
 
     def start_capture(self):
-        data = flask.request.get_json(force=True)
-        status, msg = self.mnsec.startPacketCapture(
-            nodeName1 = data.get("source"),
-            nodeName2 = data.get("target"),
-            intfName1 = data.get("source_interface"),
-            intfName2 = data.get("target_interface"),
-        )
+        try:
+            data = flask.request.get_json(force=True)
+            status, msg = self.mnsec.startPacketCapture(
+                nodeName1 = data.get("source"),
+                nodeName2 = data.get("target"),
+                intfName1 = data.get("source_interface"),
+                intfName2 = data.get("target_interface"),
+            )
+        except Exception as exc:
+            status = False
+            msg = "error running packet capture - check logs at mnsec console"
+            err = traceback.format_exc().replace("\n", ", ")
+            error(f"Failed to start capture data={data}: {exc} - {err}\n")
         if not status:
             return f"Failed to start packet capture: {msg}", 400
         return {"capture": msg}, 200
 
     def stop_capture(self):
-        data = flask.request.get_json(force=True)
-        status, msg = self.mnsec.stopPacketCapture(
-            intfName1 = data.get("source_interface"),
-            intfName2 = data.get("target_interface"),
-        )
+        try:
+            data = flask.request.get_json(force=True)
+            status, msg = self.mnsec.stopPacketCapture(
+                intfName1 = data.get("source_interface"),
+                intfName2 = data.get("target_interface"),
+            )
+        except Exception as exc:
+            status = False
+            msg = "error stopping packet capture - check logs at mnsec console"
+            err = traceback.format_exc().replace("\n", ", ")
+            error(f"Failed to stop capture data={data}: {exc} - {err}\n")
         if not status:
             return f"Failed to stop packet capture: {msg}", 400
         return {"result": msg}, 200
