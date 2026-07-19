@@ -18,6 +18,7 @@
 - Added support for imagePullSecrets on Kubernetes Pods
 - Added support for RemoteController with DNS in addition to IP
 - Added feature for allow packet capture and visualization (ingrated with webshark)
+- Introduced the concept of sidecar containers which is now resposible for setting up the links (L2TP/VXLAN). As a consequence, the main containers wont have Internet acess anymore, only the sidecar (unless you choose `isolateControlNet: false`)
 - Added information about hostID (unique integer for hosts on the topology) and saved into /var/run/mnsec\_hostID for K8s hosts
 - Added informaiton for startup done at /var/run/mnsec\_done to allow K8s hosts to identify when links were finished adding
 - Fixed ip route output containing color chars in old version
