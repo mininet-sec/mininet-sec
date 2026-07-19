@@ -19,6 +19,7 @@
 - Added preStart commands to be used to prepare image before it is executed
 - Added support for imagePullSecrets on Kubernetes Pods
 - Added support for RemoteController with DNS in addition to IP
+- Added feature for allow packet capture and visualization (ingrated with webshark)
 
 ## [1.1.0] - 2025-01-10
 
