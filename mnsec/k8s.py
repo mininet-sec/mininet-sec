@@ -358,10 +358,18 @@ class K8sPod(Node):
         self.waiting = False
         self.cmd( 'unset HISTFILE; stty -echo; set +m' )
 
-    def read_shell_sidecar(self):
+    def read_shell_sidecar(self, timeout=5):
         output = ''
         while True:
-            part = os.read(self.sidecar_fd, 1024).decode()
+            ready_to_read, _, _ = select.select(
+                [self.sidecar_fd], [], [], timeout
+            )
+            if ready_to_read:
+                part = os.read(self.sidecar_fd, 1024).decode()
+            else:
+                raise TimeoutError(
+                    f"Read operation timed out. Previous output={output}"
+                )
             if not part:
                 return ''
             if part[-1] == chr(127):

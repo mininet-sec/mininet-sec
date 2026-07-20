@@ -4,11 +4,12 @@ import yaml
 import flask
 import threading
 import textwrap
+import traceback
 from flask_socketio import SocketIO, disconnect
 #from werkzeug.serving import make_server
 from dash import Dash, html, dcc, Input, Output, State, callback, clientside_callback, get_asset_url, no_update
 import dash_cytoscape as cyto
-from mininet.log import info, warning
+from mininet.log import info, error, warning
 
 import pty
 import os
@@ -512,6 +513,13 @@ class APIServer:
             Output('input-group-shape', 'id'),
             Input("input-group-shape", "value"),
             prevent_initial_call=True,
+            function(data) {
+              localStorage.setItem("mnsec_data", JSON.stringify(data));
+              return dash_clientside.no_update;
+            }
+            """,
+            Output('store-mnsec-data', 'id'),
+            Input("store-mnsec-data", "data"),
         )
 
         self.server.add_url_rule("/topology", None, self.get_topology, methods=["GET"])
@@ -520,6 +528,8 @@ class APIServer:
         self.server.add_url_rule("/add_link", None, self.add_link, methods=["POST"])
         self.server.add_url_rule("/add_group", None, self.add_group, methods=["POST"])
         self.server.add_url_rule("/xterm/<host>", None, self.xterm, methods=["GET"])
+        self.server.add_url_rule("/start_capture", None, self.start_capture, methods=["POST"])
+        self.server.add_url_rule("/stop_capture", None, self.stop_capture, methods=["POST"])
 
 
     def setup(self):
@@ -646,7 +656,29 @@ class APIServer:
                 "availableOn": ["node"],
                 "onClick": "remove",
             },
+            {
+                "id": "start-link-capture",
+                "label": "Start capture",
+                "tooltipText": "Start Packet Capture",
+                "availableOn": ["edge"],
+                "onClickCustom": "mnsec_start_capture",
+            },
+            {
+                "id": "stop-link-capture",
+                "label": "Stop capture",
+                "tooltipText": "Stop Packet Capture",
+                "availableOn": ["edge"],
+                "onClickCustom": "mnsec_stop_capture",
+            },
         ]
+        if self.mnsec.captureWebSharkUrl:
+            context_menu.append({
+                "id": "view-link-capture",
+                "label": "View capture",
+                "tooltipText": "View Packet Capture",
+                "availableOn": ["edge"],
+                "onClickCustom": "mnsec_view_capture",
+            })
         styles = {
             "json-output": {
                 "overflowY": "scroll",
@@ -746,6 +778,7 @@ class APIServer:
         ]
 
         return_layout = html.Div([
+            dcc.Store(id='store-mnsec-data', data={"webSharkUrl": self.mnsec.captureWebSharkUrl}),
             dcc.Location(id='url'),
             dcc.Interval(id='interval-loading', interval=2000, disabled=True),
             html.Div(
@@ -1075,7 +1108,13 @@ class APIServer:
                 # of this subprocess
                 host_pid = self.mnsec[host].pid
                 homeDir = self.mnsec.setupHostHomeDir(host)
-                myshell = self.mnsec[host].params.get("shell", "bash")
+                myshell = self.mnsec[host].params.get("shell")
+                if not myshell:
+                    myshell = [
+                        "sh",
+                        "-c",
+                        "if [ -x /bin/bash ]; then exec /bin/bash; else exec /bin/sh; fi"
+                    ]
                 myenv = dict(os.environ)
                 myenv.update({"PS1": f"\\u@{host}:\\W\\$ ", "HOME": homeDir, "TERM": "xterm"})
                 # workaround to avoid bash overridding PS1
@@ -1285,6 +1324,40 @@ class APIServer:
         if not host or host not in self.mnsec:
             return flask.render_template("xterm_error.html", error=f"Invalid host={host}")
         return flask.render_template("xterm.html", host=host, gtag=self.gtag)
+
+    def start_capture(self):
+        try:
+            data = flask.request.get_json(force=True)
+            status, msg = self.mnsec.startPacketCapture(
+                nodeName1 = data.get("source"),
+                nodeName2 = data.get("target"),
+                intfName1 = data.get("source_interface"),
+                intfName2 = data.get("target_interface"),
+            )
+        except Exception as exc:
+            status = False
+            msg = "error running packet capture - check logs at mnsec console"
+            err = traceback.format_exc().replace("\n", ", ")
+            error(f"Failed to start capture data={data}: {exc} - {err}\n")
+        if not status:
+            return f"Failed to start packet capture: {msg}", 400
+        return {"capture": msg}, 200
+
+    def stop_capture(self):
+        try:
+            data = flask.request.get_json(force=True)
+            status, msg = self.mnsec.stopPacketCapture(
+                intfName1 = data.get("source_interface"),
+                intfName2 = data.get("target_interface"),
+            )
+        except Exception as exc:
+            status = False
+            msg = "error stopping packet capture - check logs at mnsec console"
+            err = traceback.format_exc().replace("\n", ", ")
+            error(f"Failed to stop capture data={data}: {exc} - {err}\n")
+        if not status:
+            return f"Failed to stop packet capture: {msg}", 400
+        return {"result": msg}, 200
 
     def run_server(self):
         info(f"APIServer listening on port {self.listen}:{self.port}\n")
