@@ -513,6 +513,10 @@ class APIServer:
             Output('input-group-shape', 'id'),
             Input("input-group-shape", "value"),
             prevent_initial_call=True,
+        )
+
+        clientside_callback(
+            """
             function(data) {
               localStorage.setItem("mnsec_data", JSON.stringify(data));
               return dash_clientside.no_update;
