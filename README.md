@@ -131,6 +131,19 @@ You can also open your internet browser app and point to Mininet-Sec web UI via 
 
 ![example03-web](./examples/example03-web.png)
 
+## Packet Capture
+
+You can visualize packets on the link similar to what we have in Wireshark/Edgeshark (thanks to webshark and sharkd). In order to have Packet Capture working fine, you will need:
+
+- Provide the packet capture directory (where pcap files will be saved). That can be done with the command line argument `--capture_dir` or when instantiating Mininet\_sec with parameter `captureDir` (see examples/firewall.py). You can also configure the maximum file size for pcap files with the `--capture_file_size` (or `captureFileSize` on Mininet\_sec python class) -- defaults to 10M.
+
+- You need to have webshark running. Example:
+```
+docker run -d --name webshark -e CAPTURES_PATH=/captures/ -e SHARKD_SOCKET=/home/node/sharkd.sock -p 8085:8085 -v /home/italo/tmp/mnsec:/captures hackinsdn/webshark
+```
+
+- TODO: we need to find a way to redirect requests to the proper container from Mininet-Sec
+
 ## Credits
 
 Many parts of the code here were inspired or directly derivated from great projects like
