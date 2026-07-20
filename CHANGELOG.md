@@ -15,10 +15,15 @@
 - Added support for sysctls definition on Kubernetes Pods
 - Enhanced open terminal on right click to leverage event target instead of selected node (#60)
 - Added xterm dark/light theme (#62) -- Thanks @gildasio
-- Fixed ip route output containing color chars in old version
-- Added preStart commands to be used to prepare image before it is executed
 - Added support for imagePullSecrets on Kubernetes Pods
 - Added support for RemoteController with DNS in addition to IP
+- Added feature for allow packet capture and visualization (ingrated with webshark)
+- Introduced the concept of sidecar containers which is now resposible for setting up the links (L2TP/VXLAN). As a consequence, the main containers wont have Internet acess anymore, only the sidecar (unless you choose `isolateControlNet: false`)
+- Added information about hostID (unique integer for hosts on the topology) and saved into /var/run/mnsec\_hostID for K8s hosts
+- Added informaiton for startup done at /var/run/mnsec\_done to allow K8s hosts to identify when links were finished adding
+- Fixed ip route output containing color chars in old version
+- Added preStart commands to be used to prepare image before it is executed
+- Added timeout to K8spod nodes startup process to avoid waiting forever. Additionally, the error is now displayed into the API server, to help find out what is wrong with the Lab definition (#74)
 
 ## [1.1.0] - 2025-01-10
 
@@ -44,5 +49,3 @@ This is the first release of Mininet-Sec. The first release include a set of fea
 - Added support for Simulated Applications with more than 30 network services available (HTTP, HTTPS, LDAP, SSH, IMAP, SMTP, POP3, etc)
 - Added integration with traffic generators like Cisco Trex (see Secflood project at https://github.com/hackinsdn/secflood)
 - Added integration with Kubernetes and interconnection of hosts via VXLAN
-- Added information about hostID (unique integer for hosts on the topology) and saved into /var/run/mnsec\_hostID for K8s hosts
-- Added informaiton for startup done at /var/run/mnsec\_done to allow K8s hosts to identify when links were finished adding

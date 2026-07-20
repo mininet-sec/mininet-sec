@@ -2,9 +2,9 @@ honeypots@git+https://github.com/italovalcy/honeypots@main#egg=honeypots
 werkzeug<3.0.0
 requests==2.28.2
 setuptools==69.2.0
-dash
-dash-cytoscape
-flask-socketio
-networkx
-pyaml
-pyjwt
+dash==4.4.0
+dash-cytoscape==1.0.2
+flask-socketio==5.6.1
+networkx==3.6.1
+pyaml==26.7.0
+pyjwt==2.13.0
