@@ -445,7 +445,4 @@ if __name__ == "__main__":
                      "Traceback: %s\n" % (trace_str) +
                      "-"*80 + "\n" )
         error( errorMsg )
-        Mininet_sec.set_error(errorMsg)
-        info("\nCleaning up in 15 seconds...\n")
-        time.sleep(15)
         cleanup()

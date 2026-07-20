@@ -10,6 +10,7 @@
 import re
 import socket
 import sys
+import traceback
 from collections import defaultdict
 import networkx as nx
 
@@ -191,7 +192,22 @@ class Mininet_sec(Mininet):
         kwargs.setdefault("switch", OVSSwitch)
         # changing ipBase to reduce chances of conflict
         kwargs.setdefault("ipBase", "10.255.0.0/16")
-        Mininet.__init__(self, **kwargs)
+        try:
+            Mininet.__init__(self, **kwargs)
+        except Exception:
+            # if API Server is running, report the error back to the user
+            # wait a few seconds before proceed to allow client callback
+            # fetch the error state/msg
+            if self.api_server:
+                trace_str = traceback.format_exc().replace("\n", ", ")
+                errorMsg = (
+                    "-"*80 + "\n" +
+                    "Traceback: %s\n" % (trace_str) +
+                    "-"*80 + "\n"
+                )
+                Mininet_sec.set_error(errorMsg)
+                sleep(10)
+            raise
 
     @classmethod
     def set_error(cls, msg):
