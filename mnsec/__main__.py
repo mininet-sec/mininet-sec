@@ -281,6 +281,14 @@ class MininetRunner( object ):
                          help=('Comma-separated list of nodes where pods should be created (K8s nodeAffinity)') )
         opts.add_option( '--topofile', type='string', default='',
                          help='Topology file location (yaml)' )
+        opts.add_option( '--capture_dir', type='string', default='/tmp/mnsec-capture',
+                         help='Directory to save capture files' )
+        opts.add_option( '--capture_file_size', type='string', default='10',
+                         help='Maximum size for capture files (only one file is saved)' )
+        opts.add_option( '--capture_webshark_url', type='string', default='',
+                         help='URL for webshark service' )
+        opts.add_option( '--settings_file', type='string', default='',
+                         help='Filename containing settings that will overwrite mnsec params' )
 
         self.options, self.args = opts.parse_args()
 
@@ -387,6 +395,9 @@ class MininetRunner( object ):
                   workDir=opts.workdir, apps=opts.apps, enable_api=not opts.disable_api,
                   enable_sflow=opts.enable_sflow, sflow_collector=opts.sflow_collector,
                   sflow_sampling=opts.sflow_sampling, sflow_polling=opts.sflow_polling,
+                  captureDir=opts.capture_dir, captureFileSize=opts.capture_file_size,
+                  captureWebSharkUrl=opts.capture_webshark_url,
+                  settingsFile=opts.settings_file,
                   listenPort=opts.listenport )
 
         if opts.ensure_value( 'nat', False ):
@@ -434,7 +445,4 @@ if __name__ == "__main__":
                      "Traceback: %s\n" % (trace_str) +
                      "-"*80 + "\n" )
         error( errorMsg )
-        Mininet_sec.set_error(errorMsg)
-        info("\nCleaning up in 15 seconds...\n")
-        time.sleep(15)
         cleanup()
