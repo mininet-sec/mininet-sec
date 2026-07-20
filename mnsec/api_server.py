@@ -853,7 +853,13 @@ class APIServer:
                 # of this subprocess
                 host_pid = self.mnsec[host].pid
                 homeDir = self.mnsec.setupHostHomeDir(host)
-                myshell = self.mnsec[host].params.get("shell", "bash")
+                myshell = self.mnsec[host].params.get("shell")
+                if not myshell:
+                    myshell = [
+                        "sh",
+                        "-c",
+                        "if [ -x /bin/bash ]; then exec /bin/bash; else exec /bin/sh; fi"
+                    ]
                 myenv = dict(os.environ)
                 myenv.update({"PS1": f"\\u@{host}:\\W\\$ ", "HOME": homeDir, "TERM": "xterm"})
                 # workaround to avoid bash overridding PS1
