@@ -1,7 +1,8 @@
 name: lab-ospf-multiarea
 settings:
   env:
-    DEFENVVAR1: xpto
+    - name: DEFENVVAR1
+      value: xpto
   # hosts_kind: default
   # switches_kind: default
   # links_kind: default
@@ -15,6 +16,19 @@ hosts:
   r1:
     kind: k8spod
     image: hackinsdn/debian:latest
+    # example of a useless pre-start commands to create
+    # multiline files and run a few commands before link
+    # setup
+    preStart:
+      - |
+        cat << 'EOF' > /tmp/foobar.txt
+        this is a file test 123
+
+        test aa bbb $HOSTNAME
+        EOF
+        date >> /tmp/xpto2
+      - hostname >> /tmp/xpto3-hostname
+      - date >> /tmp/xpto4-date
   r2:
     kind: k8spod
     image: hackinsdn/debian:latest

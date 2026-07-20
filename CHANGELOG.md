@@ -24,6 +24,9 @@
 - Fixed ip route output containing color chars in old version
 - Added preStart commands to be used to prepare image before it is executed
 - Added timeout to K8spod nodes startup process to avoid waiting forever. Additionally, the error is now displayed into the API server, to help find out what is wrong with the Lab definition (#74)
+- Added support for specifying a K8sPod with `privileged` mode
+- Added support for specifying a K8sPod with `capabilities` to be added
+- Added rsync into hackinsdn/krill and hackinsdn/routinator by default
 
 ## [1.1.0] - 2025-01-10
 

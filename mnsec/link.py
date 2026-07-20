@@ -35,13 +35,15 @@ class Link(MN_Link):
 
     def __init__(self, node1, node2, **params):
         """Create the link and change its alias/altname."""
+        alias1 = params.get("params1", {}).get("alias", params.pop("alias1", None))
+        alias2 = params.get("params2", {}).get("alias", params.pop("alias2", None))
         super().__init__(node1, node2, **params)
-        if "alias1" in params:
-            self.config_alias(self.intf1, params["alias1"])
-            self.intf1.params["alias"] = params["alias1"]
-        if "alias2" in params:
-            self.config_alias(self.intf2, params["alias2"])
-            self.intf2.params["alias"] = params["alias2"]
+        if alias1:
+            self.config_alias(self.intf1, alias1)
+            self.intf1.params["alias"] = alias1
+        if alias2:
+            self.config_alias(self.intf2, alias2)
+            self.intf2.params["alias"] = alias2
 
     def intfName(self, node, n):
         """
