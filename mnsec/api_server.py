@@ -494,7 +494,14 @@ class APIServer:
                 groups[group] = group_id
             elements[-1]["data"]["parent"] = f"group-{group_id}"
         for link in self.mnsec.links:
-            elements.append({"data": {"source": link.intf1.node.name, "target": link.intf2.node.name, "slabel": link.intf1.name.split("-")[-1], "tlabel": link.intf2.name.split("-")[-1], "source_interface": link.intf1.name, "target_interface": link.intf2.name}})
+            elements.append({"data": {
+                "source": link.intf1.node.name,
+                "target": link.intf2.node.name,
+                "slabel": link.intf1.params.get("alias", link.intf1.name.split("-")[-1]),
+                "tlabel": link.intf2.params.get("alias", link.intf2.name.split("-")[-1]),
+                "source_interface": link.intf1.name,
+                "target_interface": link.intf2.name
+            }})
         for group, group_id in groups.items():
             elements.insert(0, {"data": {"group": "nodes", "id": f"group-{group_id}", "label": group, "type": "group"}, "classes": "groupnode"})
 

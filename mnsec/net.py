@@ -36,14 +36,14 @@ from mnsec.nodelib import ( IPTablesFirewall, Host, NetworkTAP, OVSSwitch,
                             RemoteController )
 from mnsec.api_server import APIServer
 from mnsec.k8s import K8sPod
-from mnsec.link import VxLanLink, L2tpLink
+from mnsec.link import Link, VxLanLink, L2tpLink
 
 from mininet.node import ( CPULimitedHost, Controller, OVSController,
                            Ryu, NOX,
                            DefaultController, NullController,
                            UserSwitch, OVSBridge,
                            IVSSwitch )
-from mininet.link import Link, TCLink, TCULink, OVSLink
+from mininet.link import TCLink, TCULink, OVSLink
 from mininet.topo import ( SingleSwitchTopo, LinearTopo,
                            SingleSwitchReversedTopo, MinimalTopo )
 from mininet.topolib import TreeTopo, TorusTopo

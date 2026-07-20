@@ -67,6 +67,7 @@ class Host( Node ):
         """Setup published ports using socat."""
         self.published_ports = []
         homeDir = self.params.get("homeDir", "/tmp")
+        self.cmd(f"mkdir -p {homeDir}")
         for kw in parse_publish(self.params.get("publish", [])):
             h1, p1, proto, p2 = kw["host1"], kw["port1"], kw["proto"], kw["port2"]
             socat_filename = f"{homeDir}/local-{h1}-{p1}-{proto}.sock"

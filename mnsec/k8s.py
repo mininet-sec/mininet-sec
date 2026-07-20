@@ -408,9 +408,6 @@ class K8sPod(Node):
         # wait for shell to be connected
         self.read_shell_sidecar()
         self.sidecar_cmd("unset HISTFILE; stty -echo; set +m")
-        # make sure home dir exists before proceeding
-        homeDir = self.params.get("homeDir", f"/tmp/mnsec/{self.name}")
-        self.sidecar_cmd(f"mkdir -p {homeDir}")
 
 
     def setup_mgmt_namespace(self):
@@ -434,6 +431,7 @@ class K8sPod(Node):
     def setup_port_forward(self):
         """Create port forward for the pod."""
         homeDir = self.params.get("homeDir", "/tmp")
+        self.sidecar_cmd(f"mkdir -p {homeDir}")
         for kwargs in self.k8s_publish:
             try:
                 p = portforward(host2=self.k8s_pod_ip, **kwargs)
