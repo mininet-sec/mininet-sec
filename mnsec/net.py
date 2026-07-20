@@ -449,16 +449,25 @@ class Mininet_sec(Mininet):
 
     def addNodeKind(self, name, kind, **params):
         info(f"\nAdding node {name=} {kind=} {params=}\n")
+        connectTo = params.pop("connectTo", [])
         cls = HOSTS.get(kind)
         if cls:
             host = self.addHost(name, cls=cls, **params)
             if hasattr( host, 'post_created' ):
                 host.post_created()
+            info(f"\nAdding links from {name=} to={connectTo}\n")
+            for node_b in connectTo:
+                link = self.addLink(host, node_b)
+                info(f"\nadded link {link} node_b={node_b}")
             self.startHost(host)
             return host
         cls = SWITCHES.get(kind)
         if cls:
             switch = self.addSwitch(name, cls=cls, **params)
+            info(f"\nAdding links from {name=} to={connectTo}\n")
+            for node_b in connectTo:
+                link = self.addLink(switch, node_b)
+                info(f"\nadded link {link} node_b={node_b}")
             switch.start( self.controllers )
             return switch
         raise ValueError(f"Invalid Node Type: {kind}")
@@ -615,6 +624,19 @@ class Mininet_sec(Mininet):
         if name in CONTROLLERS_REV:
             return CONTROLLERS_REV[name]
         return None
+
+    def getNodeKinds(self):
+        """Return the available node kinds grouped by category (host/switch).
+
+        Consumed by the API server to populate the "add node" options, so it
+        doesn't need to import HOSTS/SWITCHES directly (avoids a circular
+        import). The "default" aliases are omitted as they duplicate a concrete
+        kind.
+        """
+        return {
+            "host": [kind for kind in HOSTS if kind != "default"],
+            "switch": [kind for kind in SWITCHES if kind != "default"],
+        }
 
     def isLocalNodeIntf(self, node1, intfName):
         if isinstance(node1, K8sPod):

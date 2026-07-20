@@ -77,18 +77,9 @@ class K8sPod(Node):
     def __init__(
         self,
         name,
-        image="hackinsdn/debian:latest",
-        command=[],
-        args=[],
-        env=[],
-        publish=[],
-        waitRunning=False,
-        isolateControlNet=True,
-        sysctls={},
-        imagePullSecrets=[],
         **params,
     ):
-        """Instantiate the Pod
+        """Instantiate the Pod. Parameters:
         waitRunning: wait for Pod to be Running? False: dont wait; True:
             wait indefinitely; Int: time to  wait (sec)
         isolateControlNet: should the control network of the Pod be isolated on
@@ -118,26 +109,26 @@ class K8sPod(Node):
         if self.tag is None:
             self.tag = uuid4().hex[:14]
         self.k8s_name = f"mnsec-{name}-{self.tag}"
-        self.k8s_image = image
-        self.k8s_command = command
-        self.k8s_args = args
+        self.k8s_image = params.get("image", "hackinsdn/debian:latest")
+        self.k8s_command = params.get("command", [])
+        self.k8s_args = params.get("args", [])
         self.k8s_pod_ip = None
-        self.k8s_env = env
+        self.k8s_env = params.get("env", []).copy()
         self.k8s_env.append({
             "name": "MNSEC_HOMEDIR",
             "value": params.get("homeDir", f"/tmp/mnsec/{name}")
         })
         if os.getenv("GTAG"):
             self.k8s_env.append({"name": "GTAG", "value": os.getenv("GTAG")})
-        self.k8s_publish = parse_publish(publish)
+        self.k8s_publish = parse_publish(params.get("publish", []))
         self.port_forward = []
-        self.waitRunning = waitRunning
-        self.isolateControlNet = isolateControlNet
-        self.k8s_sysctls = sysctls
-        self.k8s_imagePullSecrets = parse_imagePullSecrets(imagePullSecrets)
+        self.waitRunning = params.get("waitRunning", False)
+        self.isolateControlNet = params.get("isolateControlNet", True)
+        self.k8s_sysctls = params.get("sysctls", {})
+        self.k8s_imagePullSecrets = parse_imagePullSecrets(params.get("imagePullSecrets", []))
         if self.k8s_publish and not self.waitRunning:
             self.waitRunning = True
-        img = DISPLAY_IMG.get(image.rsplit(":", 1)[0])
+        img = DISPLAY_IMG.get(self.k8s_image.rsplit(":", 1)[0])
         if img:
             self.display_image = img
         Node.__init__(self, name, **params)

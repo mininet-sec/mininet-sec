@@ -175,6 +175,38 @@ class APIServer:
             return True
 
         @callback(
+            Output('new-node-connect-to', 'options'),
+            Output('new-node-connect-to', 'value'),
+            Output('new-node-inherit-from', 'options'),
+            Output('new-node-inherit-from', 'value'),
+            Input('btn-new-node', 'n_clicks'),
+            prevent_initial_call=True,
+        )
+        def populateModalNodeLists(n_clicks):
+            # refresh the node lists and reset previous selections every time
+            # the modal is opened
+            connect_to = []
+            inherit_from = []
+            for node in list(self.mnsec.hosts) + list(self.mnsec.switches):
+                inherit_from.append({"label": node.name, "value": node.name})
+                # K8sPod nodes rely on tunnel-based links: not connectable here
+                if self.mnsec.getObjKind(node) == "k8spod":
+                    continue
+                connect_to.append({"label": node.name, "value": node.name})
+            return connect_to, None, inherit_from, None
+
+        @callback(
+            Output('new-node-inherit-params', 'data'),
+            Input('new-node-inherit-from', 'value'),
+            prevent_initial_call=True,
+        )
+        def inheritNodeParams(node_name):
+            node = self.mnsec.get(node_name) if node_name else None
+            if not node:
+                return {}
+            return self.getInheritableParams(node)
+
+        @callback(
             Output('cytoscape', 'stylesheet'),
             Input('show-interface-name', 'value'),
             prevent_initial_call=True,
@@ -326,70 +358,72 @@ class APIServer:
 
         clientside_callback(
             """
-            function(typeStr) {
-              const inputEle = document.querySelector('#btn-add-node input');
-              inputEle.disabled = true;
-              const nodeType = typeStr.split("/");
-              var nodeId = cy.nodes().length + 1;
-              let nodeName = prompt("Node name (only letters and numbers)", `n${nodeId}`);
-              if (!nodeName) {
-                return "";
+            function(n_clicks) {
+              if (n_clicks) {
+                mnsecOpenNewNodeModal();
               }
-              nodeName = nodeName.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-              let nodeParams = prompt("Node parameters (comma-separated name=value pairs. Example: image='hackinsdn/debian:latest', group='group1'):");
-              const params = {};
-              if (nodeParams) {
-                nodeParams.split(',').forEach(function (pair) {
-                  const [name, value] = pair.split('=');
-                  if (name && value) {
-                    let newValue;
-                    try {
-                      newValue = JSON.parse(value.trim());
-                    } catch (error) {
-                      newValue = value.trim();
-                    }
-                    params[name.trim()] = newValue;
-                  }
-                });
-              }
-              var result = requestAddNode(nodeName, nodeType[1], params);
-              if (result) {
-                const loadingAddNode = document.querySelector('#loading-add-node');
-                loadingAddNode.style.display = "flex";
-                result.then(function(displayImg){
-                  inputEle.disabled = false;
-                  if (!displayImg) {
-                    return "";
-                  }
-                  cy.add({
-                    data: {
-                      id: nodeName,
-                      label: nodeName,
-                      type: nodeType[0],
-                      url: `/assets/${displayImg}`,
-                    },
-                    classes: ['rectangle'],
-                  });
-                  loadingAddNode.style.display = "none";
-                });
-                return "";
-              }
-              return "";
+              return dash_clientside.no_update;
             }
             """,
-            Output('btn-add-node', 'value'),
-            Input("btn-add-node", "value"),
+            Output('btn-new-node', 'id'),
+            Input("btn-new-node", "n_clicks"),
             prevent_initial_call=True,
         )
 
         clientside_callback(
             """
-            function(input1) {
-              return 'show';
+            function(n_clicks) {
+              if (n_clicks) {
+                mnsecAddAttrRow();
+              }
+              return dash_clientside.no_update;
             }
             """,
-            Output('loading-add-node', 'display'),
-            Input("btn-add-node", "value"),
+            Output('new-node-add-attr', 'id'),
+            Input("new-node-add-attr", "n_clicks"),
+            prevent_initial_call=True,
+        )
+
+        clientside_callback(
+            """
+            function(params) {
+              mnsecPopulateAttrRows(params);
+              return dash_clientside.no_update;
+            }
+            """,
+            Output('new-node-inherit-params', 'id'),
+            Input("new-node-inherit-params", "data"),
+            prevent_initial_call=True,
+        )
+
+        clientside_callback(
+            """
+            function(n_clicks) {
+              if (n_clicks) {
+                mnsecCloseNewNodeModal();
+              }
+              return dash_clientside.no_update;
+            }
+            """,
+            Output('new-node-cancel', 'id'),
+            Input("new-node-cancel", "n_clicks"),
+            prevent_initial_call=True,
+        )
+
+        clientside_callback(
+            """
+            function(n_clicks, nodeType, nodeName, connectTo) {
+              if (n_clicks) {
+                mnsecSubmitNewNode(nodeType, nodeName, connectTo);
+              }
+              return dash_clientside.no_update;
+            }
+            """,
+            Output('new-node-submit', 'id'),
+            Input("new-node-submit", "n_clicks"),
+            State("new-node-type", "value"),
+            State("new-node-name", "value"),
+            State("new-node-connect-to", "value"),
             prevent_initial_call=True,
         )
 
@@ -443,6 +477,15 @@ class APIServer:
         self.topology_loaded = True
 
     def serve_layout(self):
+        node_kinds = self.mnsec.getNodeKinds()
+        node_type_options = [
+            {"label": f"Host / {kind}", "value": f"host/{kind}"}
+            for kind in node_kinds["host"]
+        ] + [
+            {"label": f"Switch / {kind}", "value": f"switch/{kind}"}
+            for kind in node_kinds["switch"]
+        ]
+
         layout = "cose"
         elements = []
         groups = {}
@@ -507,18 +550,11 @@ class APIServer:
 
         context_menu = [
             {
-                "id": "add-host",
-                "label": "Add Host",
-                "tooltipText": "Add Host",
+                "id": "add-node",
+                "label": "Add Node",
+                "tooltipText": "Add Node",
                 "availableOn": ["canvas"],
-                "onClickCustom": "mnsec_add_host",
-            },
-            {
-                "id": "add-switch",
-                "label": "Add Switch",
-                "tooltipText": "Add Switch",
-                "availableOn": ["canvas"],
-                "onClickCustom": "mnsec_add_switch",
+                "onClickCustom": "mnsec_add_node",
             },
             {
                 "id": "add-link",
@@ -682,18 +718,7 @@ class APIServer:
                                         html.Button("Term", id="btn-open-term"),
                                         href="#", target="_blank", id="link-open-term", style={"display": "none"},
                                     ),
-                                    dcc.Dropdown(
-                                        id="btn-add-node",
-                                        placeholder="+ Node",
-                                        className="menudropdown",
-                                        clearable=False,
-                                        options=[
-                                            {"label": "Host", "value": "host/proc"},
-                                            {"label": "OVS Switch", "value": "switch/ovs"},
-                                            {"label": "Bridge Switch", "value": "switch/lxbr"},
-                                            {"label": "Pod K8s", "value": "host/k8spod"},
-                                        ],
-                                    ),
+                                    html.Button("+ Node", id="btn-new-node"),
                                     html.Button("+ Link", id="btn-add-link"),
                                     html.Button("+ Group", id="btn-add-group"),
                                 ],
@@ -823,6 +848,79 @@ class APIServer:
                     ),  # end dcc.Tabs
                 ],
             ),  # end div four columns
+            html.Div(
+                id="new-node-modal",
+                className="mnsec-modal",
+                hidden=True,
+                children=[
+                    html.Div(
+                        className="mnsec-modal-content",
+                        children=[
+                            html.Div(
+                                className="mnsec-modal-header",
+                                children=[
+                                    html.H4("Add New Node"),
+                                    html.Button(
+                                        "×",
+                                        id="new-node-close",
+                                        type="button",
+                                        className="mnsec-modal-close",
+                                        title="Close",
+                                    ),
+                                ],
+                            ),
+                            html.Label("Name:", htmlFor="new-node-name"),
+                            dcc.Input(
+                                id="new-node-name",
+                                type="text",
+                                placeholder="only letters and numbers, e.g. h1",
+                                style={"width": "100%"},
+                            ),
+                            html.Label("Node Type:", htmlFor="new-node-type"),
+                            dcc.Dropdown(
+                                id="new-node-type",
+                                placeholder="Select a node type...",
+                                clearable=False,
+                                options=node_type_options,
+                            ),
+                            html.Label(
+                                "Inherit node attributes from (optional):",
+                                htmlFor="new-node-inherit-from",
+                            ),
+                            dcc.Dropdown(
+                                id="new-node-inherit-from",
+                                placeholder="copy attributes from an existing node...",
+                                clearable=True,
+                                options=[],
+                            ),
+                            dcc.Store(id="new-node-inherit-params"),
+                            html.Label("Additional attributes:"),
+                            html.Div(id="new-node-attrs"),
+                            html.Button(
+                                "+ attribute",
+                                id="new-node-add-attr",
+                                type="button",
+                                className="mnsec-modal-add-attr",
+                            ),
+                            html.Label("Connect To (optional):", htmlFor="new-node-connect-to"),
+                            dcc.Dropdown(
+                                id="new-node-connect-to",
+                                placeholder="connect to existing node(s)...",
+                                clearable=True,
+                                multi=True,
+                                options=[],
+                            ),
+                            html.Div(
+                                className="mnsec-modal-actions",
+                                children=[
+                                    html.Button("Cancel", id="new-node-cancel", type="button"),
+                                    html.Button("Create", id="new-node-submit", type="button"),
+                                ],
+                            ),
+                        ],
+                    ),
+                ],
+            ),  # end new-node-modal
         ])
 
         @self.socketio.on("pty-input", namespace="/pty")
@@ -973,32 +1071,65 @@ class APIServer:
                     }
         return ifindexes, 200
 
+    def getInheritableParams(self, node):
+        """Return the params of a node that can be reused as kwargs for a new one.
+
+        Internal params and params driven by other fields of the "add node"
+        modal are skipped: `kind` in particular would clash with the positional
+        argument of addNodeKind().
+        """
+        skip = {"homeDir", "isSwitch", "posX", "posY", "kind", "connectTo", "hostID"}
+        params = {}
+        for name, value in (node.params or {}).items():
+            if name in skip or value is None or value == "":
+                continue
+            try:
+                json.dumps(value)
+            except (TypeError, ValueError):
+                warning(f"Ignoring non-serializable param {name=} of node {node.name}\n")
+                continue
+            params[name] = value
+        return params
+
     def add_node(self):
         data = flask.request.get_json(force=True)
+        info(f"\nadd_node {data}\n")
         for req_field in ["name", "type"]:
             if not data.get(req_field):
                 return f"Missing field {req_field} on request", 400
         if data["name"] in self.mnsec:
             return f"Node already exists: {data['name']}", 400
-        params = data.get("params")
-        if not isinstance(params, dict):
-            params = {}
+        params = {}
+        for k, v in data.get("params", {}).items():
+            try:
+                params[k] = json.loads(v)
+            except:
+                params[k] = v
         try:
             node = self.mnsec.addNodeKind(data["name"], data["type"], **params)
             assert node
         except Exception as exc:
             return f"failed to add node: {exc}", 424
-        display_image = getattr(node, "display_image", "computer.png")
+        display_image = params.get("img_url", "").split("/")[-1]
+        if not display_image:
+            display_image = getattr(node, "display_image", "computer.png")
         return display_image, 200
 
     def add_link(self):
         data = flask.request.get_json(force=True)
+        info(f"\nadd_link {data}\n")
         for node in ["node1", "node2"]:
             if not data.get(node):
                 return f"Missing field {node} on request", 400
             if data[node] not in self.mnsec:
                 return f"Node does not exist: {data[node]}", 400
 
+        if "getExisting" in data:
+            node1 = self.mnsec[data["node1"]]
+            node2 = self.mnsec[data["node2"]]
+            links = node1.connectionsTo(node2)
+            if links:
+                return {"intf1": links[0][0].name, "intf2": links[0][1].name}, 200
         try:
             link = self.mnsec.addLink(data["node1"], data["node2"])
             assert link
@@ -1072,7 +1203,7 @@ class APIServer:
         info(f"APIServer listening on port {self.listen}:{self.port}\n")
         try:
             #self.server.serve_forever()
-            self.app.run(host=self.listen, port=self.port, debug=True, use_reloader=False)
+            self.app.run(host=self.listen, port=self.port, debug=False, use_reloader=False)
         except SystemExit:
             pass
         except Exception as error:
