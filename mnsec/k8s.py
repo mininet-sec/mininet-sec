@@ -408,9 +408,6 @@ class K8sPod(Node):
         # wait for shell to be connected
         self.read_shell_sidecar()
         self.sidecar_cmd("unset HISTFILE; stty -echo; set +m")
-        # make sure home dir exists before proceeding
-        homeDir = self.params.get("homeDir", f"/tmp/mnsec/{self.name}")
-        self.sidecar_cmd(f"mkdir -p {homeDir}")
 
 
     def setup_mgmt_namespace(self):
