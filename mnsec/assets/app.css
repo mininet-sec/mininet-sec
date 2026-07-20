@@ -154,6 +154,17 @@
     padding: 0 10px;
 }
 
+#new-group-color,
+#change-group-color {
+    width: 100%;
+    height: 34px;
+    padding: 2px;
+    border: 1px solid #bbb;
+    border-radius: 4px;
+    background-color: #fff;
+    cursor: pointer;
+}
+
 .mnsec-modal-actions {
     display: flex;
     justify-content: flex-end;

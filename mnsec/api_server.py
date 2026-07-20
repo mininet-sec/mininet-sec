@@ -1,4 +1,5 @@
 import json
+import re
 import yaml
 import flask
 import threading
@@ -23,6 +24,11 @@ import termios
 def set_winsize(fd, row, col, xpix=0, ypix=0):
     winsize = struct.pack("HHHH", row, col, xpix, ypix)
     fcntl.ioctl(fd, termios.TIOCSWINSZ, winsize)
+
+
+# shapes supported by Cytoscape for compound (parent) nodes, i.e. groups
+GROUP_SHAPES = ["rectangle", "round-rectangle", "cut-rectangle", "barrel"]
+GROUP_DEFAULT_COLOR = "#F5F5F5"
 
 
 
@@ -173,6 +179,15 @@ class APIServer:
             if data and len(data) == 1 and data[0].get("type") == "group":
                 return False
             return True
+
+        @callback(
+            Output('input-group-shape', 'value'),
+            Input('cytoscape', 'selectedNodeData')
+        )
+        def displayGroupShape(data):
+            if data and len(data) == 1 and data[0].get("type") == "group":
+                return data[0].get("shape", GROUP_SHAPES[0])
+            return no_update
 
         @callback(
             Output('new-node-connect-to', 'options'),
@@ -336,6 +351,7 @@ class APIServer:
               });
 
               cy.on('select unselect', 'node', function(evt) {
+                mnsecSyncGroupStylePanel();
                 const link = document.querySelector('#link-open-term');
                 link.style.display = "none";
                 link.href = '#';
@@ -441,8 +457,10 @@ class APIServer:
 
         clientside_callback(
             """
-            function(input1) {
-              mnsecAddGroup();
+            function(n_clicks) {
+              if (n_clicks) {
+                mnsecOpenNewGroupModal();
+              }
               return dash_clientside.no_update;
             }
             """,
@@ -453,6 +471,48 @@ class APIServer:
 
         clientside_callback(
             """
+            function(n_clicks) {
+              if (n_clicks) {
+                mnsecCloseNewGroupModal();
+              }
+              return dash_clientside.no_update;
+            }
+            """,
+            Output('new-group-cancel', 'id'),
+            Input("new-group-cancel", "n_clicks"),
+            prevent_initial_call=True,
+        )
+
+        clientside_callback(
+            """
+            function(n_clicks, groupShape) {
+              if (n_clicks) {
+                mnsecSubmitNewGroup(groupShape);
+              }
+              return dash_clientside.no_update;
+            }
+            """,
+            Output('new-group-submit', 'id'),
+            Input("new-group-submit", "n_clicks"),
+            State("new-group-shape", "value"),
+            prevent_initial_call=True,
+        )
+
+        # mnsecUpdateGroupStyle() is a no-op when the shape matches the
+        # selected group, so the sync done by displayGroupShape() when a
+        # group gets selected does not trigger a spurious update
+        clientside_callback(
+            """
+            function(groupShape) {
+              if (groupShape) {
+                mnsecUpdateGroupStyle(null, groupShape);
+              }
+              return dash_clientside.no_update;
+            }
+            """,
+            Output('input-group-shape', 'id'),
+            Input("input-group-shape", "value"),
+            prevent_initial_call=True,
             function(data) {
               localStorage.setItem("mnsec_data", JSON.stringify(data));
               return dash_clientside.no_update;
@@ -489,6 +549,7 @@ class APIServer:
         layout = "cose"
         elements = []
         groups = {}
+        group_styles = {}
         for host in self.mnsec.hosts:
             img_url = host.params.get("img_url")
             if not img_url:
@@ -512,6 +573,9 @@ class APIServer:
                 group_id = len(groups.keys()) + 1
                 groups[group] = group_id
             elements[-1]["data"]["parent"] = f"group-{group_id}"
+            for attr in ("group_color", "group_shape"):
+                if host.params.get(attr):
+                    group_styles.setdefault(group, {})[attr] = host.params[attr]
         for switch in self.mnsec.switches:
             img_url = switch.params.get("img_url")
             if not img_url:
@@ -536,6 +600,9 @@ class APIServer:
                 group_id = len(groups.keys()) + 1
                 groups[group] = group_id
             elements[-1]["data"]["parent"] = f"group-{group_id}"
+            for attr in ("group_color", "group_shape"):
+                if switch.params.get(attr):
+                    group_styles.setdefault(group, {})[attr] = switch.params[attr]
         for link in self.mnsec.links:
             elements.append({"data": {
                 "source": link.intf1.node.name,
@@ -546,7 +613,12 @@ class APIServer:
                 "target_interface": link.intf2.name
             }})
         for group, group_id in groups.items():
-            elements.insert(0, {"data": {"group": "nodes", "id": f"group-{group_id}", "label": group, "type": "group"}, "classes": "groupnode"})
+            style = group_styles.get(group, {})
+            elements.insert(0, {"data": {
+                "group": "nodes", "id": f"group-{group_id}", "label": group, "type": "group",
+                "color": style.get("group_color", GROUP_DEFAULT_COLOR),
+                "shape": style.get("group_shape", GROUP_SHAPES[0]),
+            }, "classes": "groupnode"})
 
         context_menu = [
             {
@@ -679,7 +751,8 @@ class APIServer:
                 'style': {
                     'text-halign': 'center',
                     'text-valign': 'top',
-                    'background-color': '#F5F5F5',
+                    'background-color': 'data(color)',
+                    'shape': 'data(shape)',
                 }
             },
             {
@@ -692,6 +765,14 @@ class APIServer:
                   'border-width': 3,
                   'border-color': '#505050',
                   #'border-color': 'SteelBlue',
+                }
+            },
+            # keep the user-chosen group color when the group is selected
+            # (must come after :selected to take precedence)
+            {
+                'selector': '.groupnode:selected',
+                'style': {
+                  'background-color': 'data(color)',
                 }
             },
         ]
@@ -790,7 +871,22 @@ class APIServer:
                                                             html.Pre(id='change-node-id'),
                                                             html.Div(id="change-node-data", hidden=True, children=[
                                                                 'Node Label:',
-                                                                dcc.Input(id='input-node-label', type='text', debounce=True, value="")
+                                                                dcc.Input(id='input-node-label', type='text', debounce=True, value=""),
+                                                                html.Br(),
+                                                                'Group Color:',
+                                                                # dcc.Input does not support type=color, so the
+                                                                # native picker is created inside this placeholder
+                                                                # by mnsecSyncGroupStylePanel()
+                                                                html.Div(id="change-group-color-wrap"),
+                                                                'Group Shape:',
+                                                                dcc.Dropdown(
+                                                                    id="input-group-shape",
+                                                                    clearable=False,
+                                                                    options=[
+                                                                        {"label": shape.replace("-", " ").title(), "value": shape}
+                                                                        for shape in GROUP_SHAPES
+                                                                    ],
+                                                                ),
                                                             ])
                                                         ],
                                                     ),
@@ -921,6 +1017,60 @@ class APIServer:
                     ),
                 ],
             ),  # end new-node-modal
+            html.Div(
+                id="new-group-modal",
+                className="mnsec-modal",
+                hidden=True,
+                children=[
+                    html.Div(
+                        className="mnsec-modal-content",
+                        children=[
+                            html.Div(
+                                className="mnsec-modal-header",
+                                children=[
+                                    html.H4("Add New Group"),
+                                    html.Button(
+                                        "×",
+                                        id="new-group-close",
+                                        type="button",
+                                        className="mnsec-modal-close",
+                                        title="Close",
+                                    ),
+                                ],
+                            ),
+                            html.Label("Name:", htmlFor="new-group-name"),
+                            dcc.Input(
+                                id="new-group-name",
+                                type="text",
+                                placeholder="only letters, numbers and dashes",
+                                style={"width": "100%"},
+                            ),
+                            html.Label("Color:", htmlFor="new-group-color"),
+                            # dcc.Input does not support type=color, so the native
+                            # color picker is created inside this placeholder by
+                            # mnsecOpenNewGroupModal()
+                            html.Div(id="new-group-color-wrap"),
+                            html.Label("Shape:", htmlFor="new-group-shape"),
+                            dcc.Dropdown(
+                                id="new-group-shape",
+                                clearable=False,
+                                value=GROUP_SHAPES[0],
+                                options=[
+                                    {"label": shape.replace("-", " ").title(), "value": shape}
+                                    for shape in GROUP_SHAPES
+                                ],
+                            ),
+                            html.Div(
+                                className="mnsec-modal-actions",
+                                children=[
+                                    html.Button("Cancel", id="new-group-cancel", type="button"),
+                                    html.Button("Create", id="new-group-submit", type="button"),
+                                ],
+                            ),
+                        ],
+                    ),
+                ],
+            ),  # end new-group-modal
         ])
 
         @self.socketio.on("pty-input", namespace="/pty")
@@ -1148,15 +1298,25 @@ class APIServer:
         data = flask.request.get_json(force=True)
         nodes = data.get("nodes")
         group = data.get("group")
+        color = data.get("color")
+        shape = data.get("shape")
         if not nodes or not isinstance(nodes, list):
             return "Invalid/missing nodes to add_group. Please select the nodes first!", 400
         if not group:
             return "Invalid/missing group name to add_group", 400
+        if color and not re.match(r"^#[0-9a-fA-F]{6}$", color):
+            return f"Invalid color to add_group: {color}", 400
+        if shape and shape not in GROUP_SHAPES:
+            return f"Invalid shape to add_group: {shape}", 400
         for node in nodes:
             node_obj = self.mnsec.get(node)
             if not node_obj:
                 return f"Invalid {node} to add_group", 400
             node_obj.params["group"] = group
+            if color:
+                node_obj.params["group_color"] = color
+            if shape:
+                node_obj.params["group_shape"] = shape
         return {"result": "all nodes added to group"}, 200
 
     def xterm(self, host):
