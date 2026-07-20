@@ -274,7 +274,7 @@ class MininetRunner( object ):
                          help='Specify the sflow sampling rate' )
         opts.add_option( '--sflow_polling', type=int, default=10,
                          help='Specify the sflow polling interval' )
-        opts.add_option( '--disable_api', action='store_false', default=True,
+        opts.add_option( '--disable_api', action='store_true', default=False,
                          help='disable API server and topology view' )
         opts.add_option( '--k8s_node_affinity', type='string', default='',
                          metavar='node1,k8s-node2,server3',
@@ -392,7 +392,7 @@ class MininetRunner( object ):
                   xterms=opts.xterms, autoSetMacs=opts.mac,
                   autoStaticArp=opts.arp, autoPinCpus=opts.pin,
                   waitConnected=opts.wait,
-                  workDir=opts.workdir, apps=opts.apps, enable_api=opts.disable_api,
+                  workDir=opts.workdir, apps=opts.apps, enable_api=not opts.disable_api,
                   enable_sflow=opts.enable_sflow, sflow_collector=opts.sflow_collector,
                   sflow_sampling=opts.sflow_sampling, sflow_polling=opts.sflow_polling,
                   captureDir=opts.capture_dir, captureFileSize=opts.capture_file_size,
@@ -445,8 +445,4 @@ if __name__ == "__main__":
                      "Traceback: %s\n" % (trace_str) +
                      "-"*80 + "\n" )
         error( errorMsg )
-        # Print stack trace to debug log
-        import traceback
-        stackTrace = traceback.format_exc()
-        debug( stackTrace + "\n" )
         cleanup()

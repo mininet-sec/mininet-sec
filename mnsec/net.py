@@ -10,6 +10,7 @@
 import re
 import socket
 import sys
+import traceback
 from collections import defaultdict
 import networkx as nx
 
@@ -132,6 +133,9 @@ VERSION = "1.1.0"
 
 UUID_PATTERN = re.compile(r'^[\da-f]{8}-([\da-f]{4}-){3}[\da-f]{12}$')
 
+
+errorMsg = None
+
 class Mininet_sec(Mininet):
     """Emulation platform for cybersecurity tools in programmable networks"""
 
@@ -171,6 +175,7 @@ class Mininet_sec(Mininet):
         self.cleanups = []
         self.topo_dict = {}
         self.cli = None
+        self.nextHostID = 1
         self.linkNames = {}
 
         if topoFile:
@@ -187,7 +192,28 @@ class Mininet_sec(Mininet):
         kwargs.setdefault("switch", OVSSwitch)
         # changing ipBase to reduce chances of conflict
         kwargs.setdefault("ipBase", "10.255.0.0/16")
-        Mininet.__init__(self, **kwargs)
+        try:
+            Mininet.__init__(self, **kwargs)
+        except Exception:
+            # if API Server is running, report the error back to the user
+            # wait a few seconds before proceed to allow client callback
+            # fetch the error state/msg
+            if self.api_server:
+                trace_str = traceback.format_exc().replace("\n", ", ")
+                errorMsg = (
+                    "-"*80 + "\n" +
+                    "Traceback: %s\n" % (trace_str) +
+                    "-"*80 + "\n"
+                )
+                Mininet_sec.set_error(errorMsg)
+                sleep(10)
+            raise
+
+    @classmethod
+    def set_error(cls, msg):
+        global errorMsg
+        errorMsg = msg
+        APIServer.errorMsg = msg
 
     def buildTopoFromFile(self, topoFile):
         """Build topology from YAML file"""
@@ -263,9 +289,9 @@ class Mininet_sec(Mininet):
 
         info( '\n*** Running hosts post-startup:\n ')
         for host in self.hosts:
-            if hasattr( host, 'post_startup' ):
+            if hasattr( host, 'post_created' ):
                 info( host.name + ' ' )
-                host.post_startup()
+                host.post_created()
 
         info( '\n*** Adding switches:\n' )
         for switchName in topo.switches():
@@ -313,6 +339,20 @@ class Mininet_sec(Mininet):
         if self.run_api_server:
             self.api_server.setup()
 
+    def addHost( self, name, cls=None, **params ):
+        """
+        Wrapper for adding host. Generate a increasing host ID for the host.
+        Parameters:
+           name: name of host to add
+           cls: custom host class/constructor (optional)
+           params: parameters for host
+        returns: added host
+        """
+        params.update({"hostID": self.nextHostID})
+        self.nextHostID += 1
+        params.update({"homeDir": f"{self.workDir}/{name}"})
+        return super().addHost(name, cls=cls, **params)
+
     def readSettings(self):
         if not self.settingsFile:
             return
@@ -327,8 +367,7 @@ class Mininet_sec(Mininet):
     def setupHostHomeDir(self, host):
         """Setup host home dir."""
         host = host if not isinstance( host, str ) else self[ host ]
-        homeDir = f"{self.workDir}/{host.name}"
-        host.params["homeDir"] = homeDir
+        homeDir = host.params.get("homeDir", f"{self.workDir}/{host.name}")
         host.cmd(f"mkdir -p {homeDir}")
         return homeDir
 
@@ -413,8 +452,8 @@ class Mininet_sec(Mininet):
         cls = HOSTS.get(kind)
         if cls:
             host = self.addHost(name, cls=cls, **params)
-            if hasattr( host, 'post_startup' ):
-                host.post_startup()
+            if hasattr( host, 'post_created' ):
+                host.post_created()
             self.startHost(host)
             return host
         cls = SWITCHES.get(kind)

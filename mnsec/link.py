@@ -4,11 +4,18 @@ import re
 
 from mininet.log import info, error, debug
 from mininet.util import makeIntfPair
-from mininet.link import Link
+from mininet.link import Link, Intf
 from mininet.util import quietRun
 from mininet.clean import addCleanupCallback, sh
 from mnsec.k8s import K8sPod
 
+
+class K8sIntf( Intf ):
+    "Patch interface on an K8sPod"
+
+    def ifconfig( self, *args ):
+        cmd = ' '.join( args )
+        return self.node.sidecar_cmd(f"ifconfig {self.name} {cmd}")
 
 class VxLanLink(Link):
     """VXLan Link"""
@@ -18,8 +25,10 @@ class VxLanLink(Link):
     def __init__(self, node1, node2, **params):
         """Create VXLan Link on nodes."""
         if isinstance(node1, K8sPod):
+            params.update(cls1=K8sIntf)
             node1.wait_running(wait=60)
         if isinstance(node2, K8sPod):
+            params.update(cls2=K8sIntf)
             node2.wait_running(wait=60)
         Link.__init__(self, node1, node2, **params)
 
@@ -59,8 +68,8 @@ class VxLanLink(Link):
                 shell=True,
             ).strip()
 
-        runCmd1 = node1.cmd if isinstance(node1, K8sPod) else quietRun
-        runCmd2 = node2.cmd if isinstance(node2, K8sPod) else quietRun
+        runCmd1 = node1.sidecar_cmd if isinstance(node1, K8sPod) else quietRun
+        runCmd2 = node2.sidecar_cmd if isinstance(node2, K8sPod) else quietRun
         netns1 = 1 if isinstance(node1, K8sPod) else node1.pid
         netns2 = 1 if isinstance(node2, K8sPod) else node2.pid
         cmd1Pfx = "ip netns exec mgmt" if getattr(node1, "isolateControlNet", False) else ""
@@ -101,6 +110,12 @@ class L2tpLink(Link):
 
     def __init__(self, node1, node2, **params):
         """Create L2TP Link on nodes."""
+        if isinstance(node1, K8sPod):
+            params.update(cls1=K8sIntf)
+            node1.wait_running(wait=60)
+        if isinstance(node2, K8sPod):
+            params.update(cls2=K8sIntf)
+            node2.wait_running(wait=60)
         Link.__init__(self, node1, node2, **params)
 
     @classmethod
@@ -146,8 +161,8 @@ class L2tpLink(Link):
                 shell=True,
             ).strip()
 
-        runCmd1 = node1.cmd if isinstance(node1, K8sPod) else quietRun
-        runCmd2 = node2.cmd if isinstance(node2, K8sPod) else quietRun
+        runCmd1 = node1.sidecar_cmd if isinstance(node1, K8sPod) else quietRun
+        runCmd2 = node2.sidecar_cmd if isinstance(node2, K8sPod) else quietRun
         netns1 = 1 if isinstance(node1, K8sPod) else node1.pid
         netns2 = 1 if isinstance(node2, K8sPod) else node2.pid
         cmd1Pfx = "ip netns exec mgmt" if getattr(node1, "isolateControlNet", False) else ""
@@ -216,8 +231,8 @@ class L2tpLink(Link):
         "Override to remove L2TP session and tunnel"
         node1 = self.intf1.node
         node2 = self.intf2.node
-        runCmd1 = node1.cmd if isinstance(node1, K8sPod) else quietRun
-        runCmd2 = node2.cmd if isinstance(node2, K8sPod) else quietRun
+        runCmd1 = node1.sidecar_cmd if isinstance(node1, K8sPod) else quietRun
+        runCmd2 = node2.sidecar_cmd if isinstance(node2, K8sPod) else quietRun
         cmd1Pfx = "ip netns exec mgmt" if getattr(node1, "isolateControlNet", False) else ""
         cmd2Pfx = "ip netns exec mgmt" if getattr(node2, "isolateControlNet", False) else ""
         if self.intf1.name in self.l2tp_intf_tun:

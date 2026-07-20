@@ -27,6 +27,8 @@ def set_winsize(fd, row, col, xpix=0, ypix=0):
 
 
 class APIServer:
+    errorMsg = None
+
     def __init__(self, mnsec, listen="0.0.0.0", port=8050):
         """Starts Flask/Dash API server. Requires Mininet-Sec object."""
         self.mnsec = mnsec
@@ -80,6 +82,16 @@ class APIServer:
         )
         def interval_update(n):
             if self.topology_loaded:
+                return "/", True
+            elif self.errorMsg is not None:
+                self.app.layout = html.Div([
+                    html.Img(src=get_asset_url('mininet-sec.png')),
+                    html.H3("Error while loading the topology... :-(", style={"margin": "1.3em 0 0.0 0", "padding": "9px", "background-color": "#11557C", "color": "white"}),
+                    html.Div(style={"text-wrap-mode": "wrap", "border": "1px solid #ddd", "margin": "0 0 1em 0", "padding": "10px"}, children=[
+                        html.Pre(self.errorMsg, style={"text-wrap-mode": "wrap"}),
+                        html.H4("Try restarting the Lab. If the error persists, contact the admins!"),
+                    ])
+                ])
                 return "/", True
             else:
                 return no_update
@@ -841,6 +853,13 @@ class APIServer:
                 # of this subprocess
                 host_pid = self.mnsec[host].pid
                 homeDir = self.mnsec.setupHostHomeDir(host)
+                myshell = self.mnsec[host].params.get("shell")
+                if not myshell:
+                    myshell = [
+                        "sh",
+                        "-c",
+                        "if [ -x /bin/bash ]; then exec /bin/bash; else exec /bin/sh; fi"
+                    ]
                 myenv = dict(os.environ)
                 myenv.update({"PS1": f"\\u@{host}:\\W\\$ ", "HOME": homeDir, "TERM": "xterm"})
                 # workaround to avoid bash overridding PS1
@@ -848,7 +867,7 @@ class APIServer:
                 myenv["SUDO_PS1"] = "# "
                 mncmd = ['mnexec', '-a', str(host_pid)]
                 with self.mnsec[host].popen(
-                    "bash", env=myenv, cwd=homeDir, mncmd=mncmd, stdout=None, stderr=None,
+                    myshell, env=myenv, cwd=homeDir, mncmd=mncmd, stdout=None, stderr=None,
                 ) as process:
                     try:
                         stdout, stderr = process.communicate()
