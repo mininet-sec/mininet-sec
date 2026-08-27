@@ -2,6 +2,10 @@
 
 ## [UNRELEASED] - Under development
 
+- TODO
+
+## [1.2.0] - 2026-08-27
+
 - Added support for touch devices
 - Added feature to open host terminal based on double check in the Mininet-Sec Web UI
 - Added script to setup DNS service based on bind9 (`service-mnsec-bind9.sh`), with options: enable the DNS server, enable recursion, add a zone, add entires to a zone
