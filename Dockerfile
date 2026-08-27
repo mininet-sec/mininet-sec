@@ -1,6 +1,10 @@
 FROM debian:bookworm-slim
 MAINTAINER Italo Valcy <italovalcy@gmail.com>
 
+# instead of using $(curl -L -s https://dl.k8s.io/release/stable.txt)
+# we pinned to v1.36.1 due to problems with v1.37.0
+ARG KUBECTL_VER=v1.36.1
+
 ENV DEBIAN_FRONTEND noninteractive
 
 RUN apt-get update \
@@ -12,7 +16,7 @@ RUN apt-get update \
 		apache2 ntp ssh bind9 dovecot-imapd dovecot-pop3d \
  && rm -f /usr/lib/python3.11/EXTERNALLY-MANAGED \
  && cd /tmp \
- && curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
+ && curl -LO "https://dl.k8s.io/release/$KUBECTL_VER/bin/linux/amd64/kubectl" \
  && install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl \
  && curl -LO https://github.com/italovalcy/ali/releases/download/v0.7.6/ali_0.7.6_linux_amd64.deb \
  && dpkg -i ali_0.7.6_linux_amd64.deb \
