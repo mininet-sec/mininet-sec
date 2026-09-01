@@ -157,6 +157,7 @@ class K8sPod(Node):
                             "name": self.k8s_name,
                             "env": self.k8s_env,
                             "securityContext": {
+                                "privileged": True,
                                 "capabilities": {
                                     "add": ["NET_ADMIN", "SYS_ADMIN"],
                                 },
