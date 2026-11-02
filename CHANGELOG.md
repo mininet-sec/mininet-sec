@@ -2,7 +2,7 @@
 
 ## [UNRELEASED] - Under development
 
-- TODO
+- Added option to define node affinity for Kubernetes Pods in the topology (`nodeAffinity`), restricted by `K8S_NODE_AFFINITY` (#85)
 
 ## [1.2.0] - 2026-08-27
 

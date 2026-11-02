@@ -1,0 +1,30 @@
+name: topology used for tunnel overhead experiment
+hosts:
+  labA:
+    image: hackinsdn/debian:latest
+    kind: k8spod
+    isolateControlNet: false
+    # schedule this Pod on node ids-pe. If K8S_NODE_AFFINITY is set, the
+    # node must be one of the allowed nodes, otherwise an error is raised.
+    # It also accepts a list of nodes: nodeAffinity: [node1, node2]
+    nodeAffinity: ids-pe
+    postStart:
+      - iperf3 -s -D
+  labB:
+    image: hackinsdn/debian:latest
+    kind: k8spod
+    isolateControlNet: false
+    nodeAffinity: ids-mg
+    postStart:
+      - iperf3 -s -D
+links:
+  - node1: labA
+    node2: labB
+    kind: vxlan
+    ipv4_node1: 198.51.100.1/30
+    ipv4_node2: 198.51.100.2/30
+  - node1: labA
+    node2: labB
+    kind: l2tp
+    ipv4_node1: 203.0.113.1/30
+    ipv4_node2: 203.0.113.2/30

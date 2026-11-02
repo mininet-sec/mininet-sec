@@ -65,6 +65,18 @@ def parse_imagePullSecrets(imagePullSecrets):
         secrets.append({"name": item})
     return secrets
 
+
+def parse_node_affinity(nodes):
+    """Parse node affinity as a list of node names. Accepts a list of
+    strings or a comma-separated string (eg: "node1, node2")."""
+    if not nodes:
+        return []
+    if isinstance(nodes, str):
+        nodes = nodes.split(",")
+    if not isinstance(nodes, list) or not all(isinstance(n, str) for n in nodes):
+        raise ValueError("Invalid data type for node affinity, must be string or list of strings")
+    return [n.strip() for n in nodes if n.strip()]
+
 class K8sPod(Node):
     "A Node running on Kubernetes as a Pod."
     initialized = False
@@ -102,6 +114,10 @@ class K8sPod(Node):
         imagePullSecrets: list of strings. Each item in the imagePullSecrets
             list refers to a Kubernetes Secret object by its name to be used
             for accessing a registry and pull the image.
+        nodeAffinity: node name (or list/comma-separated string of node
+            names) where the Pod must be scheduled. If K8S_NODE_AFFINITY is
+            set, the requested nodes must be a subset of it, otherwise an
+            error is raised. Example: nodeAffinity="node1"
 
         """
         if not self.initialized:
@@ -112,6 +128,7 @@ class K8sPod(Node):
         self.k8s_image = params.get("image", "hackinsdn/debian:latest")
         self.k8s_command = params.get("command", [])
         self.k8s_args = params.get("args", [])
+        self.k8s_node_affinity = self.resolve_node_affinity(params.get("nodeAffinity"))
         self.k8s_pod_ip = None
         self.k8s_env = params.get("env", []).copy()
         self.k8s_env.append({
@@ -180,7 +197,7 @@ class K8sPod(Node):
             pod_manifest["spec"]["containers"][0]["command"] = self.k8s_command
         if self.k8s_args:
             pod_manifest["spec"]["containers"][0]["args"] = self.k8s_args
-        if self.node_affinity:
+        if self.k8s_node_affinity:
             pod_manifest["spec"]["affinity"] = {
                 "nodeAffinity": {
                     "requiredDuringSchedulingIgnoredDuringExecution": {
@@ -190,7 +207,7 @@ class K8sPod(Node):
                                     {
                                         "key": "kubernetes.io/hostname",
                                         "operator": "In",
-                                        "values": self.node_affinity,
+                                        "values": self.k8s_node_affinity,
                                     },
                                 ],
                             },
@@ -625,14 +642,25 @@ class K8sPod(Node):
 
     @classmethod
     def setup_node_affinity(cls, nodes):
-        if not nodes:
-            return
-        if isinstance(nodes, list):
+        nodes = parse_node_affinity(nodes)
+        if nodes:
             cls.node_affinity = nodes
-        elif isinstance(nodes, str):
-            cls.node_affinity = nodes.split(",")
-        else:
-            raise ValueError("Invalid data type for node affinity, must be string or list of strings")
+
+    @classmethod
+    def resolve_node_affinity(cls, nodes):
+        """Return the nodes where the Pod must run: the nodes requested by
+        the user (if allowed by K8S_NODE_AFFINITY) or K8S_NODE_AFFINITY."""
+        nodes = parse_node_affinity(nodes)
+        if not nodes:
+            return cls.node_affinity
+        if cls.node_affinity:
+            not_allowed = [n for n in nodes if n not in cls.node_affinity]
+            if not_allowed:
+                raise ValueError(
+                    f"Node affinity {not_allowed} not allowed by K8S_NODE_AFFINITY"
+                    f" (allowed nodes: {cls.node_affinity})"
+                )
+        return nodes
 
 
 KUBECTL = quietRun("which kubectl").strip()
